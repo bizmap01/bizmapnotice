@@ -514,7 +514,7 @@
       }
     }
 
-    /* 최초 키워드 저장 (DB Upsert) */
+    /* 최초 키워드 저장 (이메일 중복 체크 후 분기 처리로 오류 완벽 방지) */
     async function saveUserInfo() {
       if (!currentKakaoUser) {
         alert('로그인 정보가 없습니다.');
@@ -532,24 +532,50 @@
       const email = currentKakaoUser.kakao_account?.email || `kakao_${currentKakaoUser.id}@bizmap.local`;
       const name = currentKakaoUser.properties?.nickname || '사용자';
 
-      const { data, error } = await supabaseClient
+      // 1. 기존 유저 조회
+      const { data: existingUser } = await supabaseClient
         .from('users')
-        .upsert([
-          { 
-            email: email,
+        .select('email')
+        .eq('email', email)
+        .maybeSingle();
+
+      let dbError = null;
+
+      if (existingUser) {
+        // 이미 가입된 계정이면 UPDATE
+        const { error } = await supabaseClient
+          .from('users')
+          .update({
             name: name,
             keywords: keywordsList,
             provider: 'kakao',
             subscription_status: 'active'
-          }
-        ], { onConflict: 'email' });
+          })
+          .eq('email', email);
+        dbError = error;
+      } else {
+        // 신규 계정이면 INSERT
+        const { error } = await supabaseClient
+          .from('users')
+          .insert([
+            { 
+              email: email,
+              name: name,
+              keywords: keywordsList,
+              provider: 'kakao',
+              subscription_status: 'active'
+            }
+          ]);
+        dbError = error;
+      }
 
-      if (error) {
-        console.error('DB 저장 에러:', error);
-        alert('가입 처리 중 오류가 발생했습니다: ' + error.message);
+      if (dbError) {
+        console.error('DB 저장 에러:', dbError);
+        alert('가입 처리 중 오류가 발생했습니다: ' + dbError.message);
       } else {
         alert(`${name}님, 맞춤 지원사업 알림 신청이 완벽하게 완료되었습니다!`);
         closeModal('keyword-modal');
+        updateUIOnLogin();
       }
     }
 
@@ -603,15 +629,12 @@
 
       const { error } = await supabaseClient
         .from('users')
-        .upsert([
-          {
-            email: email,
-            name: name,
-            keywords: keywordsList,
-            provider: 'kakao',
-            subscription_status: isActive ? 'active' : 'inactive'
-          }
-        ], { onConflict: 'email' });
+        .update({
+          name: name,
+          keywords: keywordsList,
+          subscription_status: isActive ? 'active' : 'inactive'
+        })
+        .eq('email', email);
 
       if (error) {
         msgDiv.style.color = '#ef4444';
