@@ -17,12 +17,11 @@
       margin: 0; 
       padding: 0; 
       font-family: 'Pretendard', -apple-system, sans-serif;
-      word-break: keep-all; /* 한국어 어절 단위 줄바꿈 */
-      text-wrap: balance;  /* 모바일 줄 길이 자동 밸런스 */
+      word-break: keep-all;
+      text-wrap: balance;
     }
     body { background-color: #f8fafc; color: #1e293b; line-height: 1.7; }
     
-    /* Header Navigation */
     header { display: flex; justify-content: space-between; align-items: center; padding: 18px 8%; background: #ffffff; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 100; }
     .logo { font-size: 22px; font-weight: 800; color: #2563eb; text-decoration: none; cursor: pointer; }
     .nav { display: flex; gap: 24px; font-size: 15px; color: #64748b; font-weight: 600; }
@@ -30,7 +29,6 @@
     .nav a:hover { color: #2563eb; }
     .btn-login { background: #2563eb; color: white; padding: 8px 18px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 600; cursor: pointer; border: none; }
     
-    /* Hero Section */
     .hero { text-align: center; padding: 80px 20px 60px; background: linear-gradient(180deg, #eff6ff 0%, #f8fafc 100%); }
     .badge-group { display: flex; justify-content: center; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
     .badge { background: #dbeafe; color: #1d4ed8; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; }
@@ -40,14 +38,12 @@
     .btn-kakao { display: inline-flex; align-items: center; justify-content: center; background: #FEE500; color: #000000; font-weight: 800; font-size: 18px; padding: 18px 40px; border-radius: 12px; text-decoration: none; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); transition: transform 0.2s; cursor: pointer; border: none; }
     .btn-kakao:hover { transform: translateY(-2px); }
 
-    /* Target Customer Cards */
     .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 20px; }
     .target-card { background: white; padding: 30px 24px; border-radius: 16px; border: 1px solid #e2e8f0; text-align: center; }
     .target-icon { font-size: 36px; margin-bottom: 16px; }
     .target-title { font-weight: 800; font-size: 18px; margin-bottom: 12px; color: #0f172a; }
     .target-desc { font-size: 14px; color: #64748b; line-height: 1.6; }
 
-    /* Interactive Kakao Simulator Section */
     .preview-section { background: #ffffff; padding: 80px 20px; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; text-align: center; }
     .filter-buttons { display: flex; justify-content: center; gap: 10px; margin-bottom: 32px; flex-wrap: wrap; }
     .filter-btn { background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; padding: 10px 20px; border-radius: 20px; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.2s; }
@@ -70,18 +66,15 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Section Global */
     .section { max-width: 1080px; margin: 0 auto; padding: 90px 20px; }
     .section-title { text-align: center; font-size: 30px; font-weight: 800; margin-bottom: 52px; color: #0f172a; line-height: 1.45; }
 
-    /* Problem Cards */
     .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
     .card-problem { background: white; padding: 36px 30px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
     .card-problem .icon { font-size: 38px; margin-bottom: 20px; }
     .card-problem h3 { font-size: 20px; font-weight: 700; margin-bottom: 14px; }
     .card-problem p { color: #64748b; font-size: 15px; line-height: 1.65; }
 
-    /* Solutions */
     .solution-list { background: white; border-radius: 20px; padding: 24px; border: 1px solid #e2e8f0; }
     .solution-item { display: flex; align-items: flex-start; gap: 24px; padding: 28px 24px; border-bottom: 1px solid #f1f5f9; }
     .solution-item:last-child { border-bottom: none; }
@@ -89,7 +82,6 @@
     .solution-text h4 { font-size: 19px; font-weight: 700; margin-bottom: 10px; }
     .solution-text p { color: #64748b; font-size: 15.5px; line-height: 1.65; }
 
-    /* Pricing */
     .pricing-container { display: flex; justify-content: center; gap: 32px; flex-wrap: wrap; }
     .price-card { background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 44px 32px; width: 340px; text-align: center; position: relative; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
     .price-card.best { border: 2px solid #2563eb; }
@@ -102,14 +94,12 @@
     .btn-subscribe { display: block; width: 100%; background: #0f172a; color: white; padding: 14px; border-radius: 10px; text-decoration: none; font-weight: 700; border: none; cursor: pointer; text-align: center; }
     .price-card.best .btn-subscribe { background: #2563eb; }
 
-    /* FAQ Section */
     .faq-list { max-width: 840px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
     .faq-item { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 28px 32px; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
     .faq-q { font-weight: 800; font-size: 18px; color: #0f172a; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
     .faq-q span { color: #2563eb; font-size: 22px; font-weight: 900; }
     .faq-a { color: #475569; font-size: 15.5px; line-height: 1.7; padding-left: 32px; }
 
-    /* Detailed Business Footer */
     footer { text-align: center; padding: 50px 20px; background: #0f172a; color: #94a3b8; font-size: 13.5px; line-height: 1.8; }
     .footer-info { max-width: 900px; margin: 0 auto 20px; text-align: center; border-bottom: 1px solid #334155; padding-bottom: 24px; }
     .footer-info p { margin-bottom: 6px; }
@@ -117,7 +107,6 @@
     .footer-links a { color: #cbd5e1; text-decoration: none; cursor: pointer; }
     .footer-links a:hover { color: #60a5fa; text-decoration: underline; }
 
-    /* Modal Overlay */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.75); z-index: 1000; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(4px); }
     .modal-content { background: #ffffff; width: 100%; max-width: 850px; max-height: 80vh; border-radius: 20px; padding: 36px 30px; position: relative; overflow-y: auto; text-align: left; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
     .modal-title { font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; }
@@ -127,7 +116,6 @@
     .modal-body p, .modal-body ul { margin-bottom: 12px; }
     .modal-body ul { padding-left: 20px; }
 
-    /* Mobile Responsive Optimizations */
     @media (max-width: 768px) {
       header { padding: 14px 20px; }
       .nav { gap: 14px; font-size: 13.5px; }
@@ -147,7 +135,6 @@
 </head>
 <body id="top">
 
-  <!-- Header Navigation -->
   <header>
     <a href="#top" class="logo">Bizmap</a>
     <div class="nav">
@@ -159,7 +146,6 @@
     <button onclick="loginWithKakao()" class="btn-login">시작하기</button>
   </header>
 
-  <!-- Hero Section -->
   <section class="hero">
     <div class="badge-group">
       <span class="badge">⚡ 소상공인 · 스타트업 맞춤 알림</span>
@@ -170,7 +156,6 @@
     <button onclick="loginWithKakao()" class="btn-kakao">💬 3초 만에 카카오톡으로 시작하기</button>
   </section>
 
-  <!-- Target Customer Section -->
   <section class="section" style="padding-bottom: 20px;">
     <h2 class="section-title" style="margin-bottom: 32px;">🎯 이런 대표님께 꼭 필요합니다</h2>
     <div class="grid-4">
@@ -197,7 +182,6 @@
     </div>
   </section>
 
-  <!-- Interactive Kakao Simulator Section -->
   <section id="preview" class="preview-section">
     <h2 style="font-size: 24px; font-weight: 800; margin-bottom: 12px; color: #0f172a;">📱 직접 클릭해 보세요!<br>내 조건에 맞춰 오는 알림톡</h2>
     <p style="color: #64748b; margin-bottom: 28px; font-size: 15px;">아래 버튼을 누르면 관심 조건별 수신 알림 예시가 바뀝니다.</p>
@@ -219,7 +203,6 @@
     </div>
   </section>
 
-  <!-- Problem Section -->
   <section class="section">
     <h2 class="section-title">대표님,<br>혹시 이런 경험 없으신가요?</h2>
     <div class="grid-3">
@@ -241,7 +224,6 @@
     </div>
   </section>
 
-  <!-- Feature Section -->
   <section id="features" class="section">
     <h2 class="section-title">이제 비즈맵이 매일 아침 대신 찾아드립니다</h2>
     <div class="solution-list">
@@ -269,7 +251,6 @@
     </div>
   </section>
 
-  <!-- Pricing Section -->
   <section id="pricing" class="section">
     <h2 class="section-title">커피 한 잔 값으로 지원사업 전담 비서를 두세요</h2>
     <div class="pricing-container">
@@ -299,7 +280,6 @@
     </div>
   </section>
 
-  <!-- FAQ Section -->
   <section id="faq" class="section">
     <h2 class="section-title">❓ 자주 묻는 질문 (FAQ)</h2>
     <div class="faq-list">
@@ -322,7 +302,6 @@
     </div>
   </section>
 
-  <!-- Footer -->
   <footer>
     <div class="footer-links">
       <a onclick="openModal('terms-modal')">이용약관</a> | 
@@ -340,7 +319,6 @@
     <p style="font-size: 12px; color: #64748b;">Copyright © 아이엠엘케이 (Bizmap). All rights reserved.</p>
   </footer>
 
-  <!-- Modal: Keyword Setup (로그인 후 키워드 입력) -->
   <div id="keyword-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 480px;">
       <button class="modal-close" onclick="closeModal('keyword-modal')">✕</button>
@@ -355,7 +333,6 @@
     </div>
   </div>
 
-  <!-- Modal: Terms of Service -->
   <div id="terms-modal" class="modal-overlay">
     <div class="modal-content">
       <button class="modal-close" onclick="closeModal('terms-modal')">✕</button>
@@ -395,7 +372,6 @@
     </div>
   </div>
 
-  <!-- Modal: Privacy Policy -->
   <div id="privacy-modal" class="modal-overlay">
     <div class="modal-content">
       <button class="modal-close" onclick="closeModal('privacy-modal')">✕</button>
@@ -430,9 +406,7 @@
     </div>
   </div>
 
-  <!-- JavaScript Logic -->
   <script>
-    /* 1. Supabase & Kakao SDK 설정 */
     const SUPABASE_URL = 'https://hcyvfgeaquydsvtrcnrv.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_P19tdkj74ibIy7Xdle2i4w_M1B1mhV_';
     const KAKAO_JS_KEY = '9bd12d1c0e5ec843cafec8513fc92cc8';
@@ -444,7 +418,7 @@
 
     let currentKakaoUser = null;
 
-    /* 2. 카카오 로그인 실행 함수 */
+    /* 수정된 카카오 로그인 (에러 원인을 팝업으로 직접 출력) */
     function loginWithKakao() {
       Kakao.Auth.login({
         success: function(authObj) {
@@ -455,17 +429,16 @@
               openModal('keyword-modal');
             },
             fail: function(error) {
-              alert('카카오 회원 정보를 불러오지 못했습니다.');
+              alert('카카오 사용자 정보 조회 실패:\n' + JSON.stringify(error));
             }
           });
         },
         fail: function(err) {
-          alert('카카오 로그인 중 오류가 발생했습니다.');
+          alert('카카오 로그인 실패 상세 원인:\n' + JSON.stringify(err));
         }
       });
     }
 
-    /* 3. Supabase DB 사용자 저장 함수 */
     async function saveUserInfo() {
       const keywordsInput = document.getElementById('user-keywords').value;
       const keywordsList = keywordsInput.split(',').map(k => k.trim()).filter(k => k.length > 0);
@@ -494,7 +467,6 @@
       }
     }
 
-    /* 4. 시뮬레이터 데이터 및 렌더링 */
     const mockData = {
       all: [
         { org: '성남산업진흥원', region: '경기 / 판로·해외진출', title: '2026년 성남시 폴란드 방산 시장개척단 참가기업 모집', date: '~ 2026.08.18 까지', kw: '[경기 / 판로]' },
@@ -539,7 +511,6 @@
       renderChats(type);
     }
 
-    /* 5. Modal Controls */
     function openModal(id) {
       document.getElementById(id).style.display = 'flex';
       document.body.style.overflow = 'hidden';
