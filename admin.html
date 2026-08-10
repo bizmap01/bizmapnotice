@@ -10,18 +10,18 @@
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pretendard', -apple-system, sans-serif; }
-    body { background-color: #f1f5f9; color: #0f172a; display: flex; min-height: 100vh; }
+    body { background-color: #f1f5f9; color: #0f172a; display: flex; height: 100vh; overflow: hidden; }
 
     /* 사이드바 */
     sidebar { width: 240px; background: #1e293b; color: #ffffff; padding: 24px 20px; flex-shrink: 0; }
     sidebar .brand { font-size: 20px; font-weight: 800; color: #38bdf8; margin-bottom: 36px; display: flex; align-items: center; gap: 8px; }
     sidebar ul { list-style: none; }
     sidebar li { margin-bottom: 8px; }
-    sidebar a { display: block; color: #94a3b8; text-decoration: none; padding: 10px 14px; border-radius: 8px; font-weight: 600; font-size: 14px; transition: all 0.2s; }
+    sidebar a { display: block; color: #94a3b8; text-decoration: none; padding: 10px 14px; border-radius: 8px; font-weight: 600; font-size: 14px; transition: all 0.2s; cursor: pointer; }
     sidebar a.active, sidebar a:hover { background: #334155; color: #ffffff; }
 
     /* 메인 콘텐츠 영역 */
-    main { flex: 1; padding: 32px 40px; overflow-y: auto; }
+    main { flex: 1; padding: 32px 40px; overflow-y: auto; scroll-behavior: smooth; }
     .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }
     .header h1 { font-size: 24px; font-weight: 800; }
     .btn-refresh { background: #2563eb; color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13.5px; }
@@ -66,7 +66,7 @@
     <div class="auth-card">
       <h2 style="font-size: 20px; font-weight: 800; margin-bottom: 8px;">🔐 BIZMAP 관리자 접근</h2>
       <p style="font-size: 13px; color: #64748b;">운영 비밀번호를 입력해 주세요.</p>
-      <input type="password" id="admin-pass-input" placeholder="비밀번호 입력">
+      <input type="password" id="admin-pass-input" placeholder="비밀번호 입력" onkeyup="if(window.event.keyCode==13){checkAdminPass()}">
       <button onclick="checkAdminPass()">입장하기</button>
     </div>
   </div>
@@ -75,15 +75,15 @@
   <sidebar>
     <div class="brand">📊 BIZMAP Admin</div>
     <ul>
-      <li><a href="#" class="active">대시보드 홈</a></li>
-      <li><a href="#user-section">유저 관리</a></li>
-      <li><a href="#log-section">발송 로그 모니터링</a></li>
+      <li><a class="nav-link active" onclick="navigateTo('top-section', this)">대시보드 홈</a></li>
+      <li><a class="nav-link" onclick="navigateTo('user-section', this)">유저 관리</a></li>
+      <li><a class="nav-link" onclick="navigateTo('log-section', this)">발송 로그 모니터링</a></li>
     </ul>
   </sidebar>
 
   <!-- 메인 대시보드 -->
-  <main>
-    <div class="header">
+  <main id="main-content">
+    <div id="top-section" class="header">
       <h1>서비스 현황 모니터링</h1>
       <button onclick="loadAdminData()" class="btn-refresh">🔄 데이터 새로고침</button>
     </div>
@@ -152,10 +152,21 @@
     const SUPABASE_KEY = 'sb_publishable_P19tdkj74ibIy7Xdle2i4w_M1B1mhV_';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    /* 단순 암호화 비밀번호 체크 (원하시는 비밀번호로 변경 가능) */
+    /* 사이드바 메뉴 클릭 시 해당 섹션으로 부드러운 스크롤 이동 */
+    function navigateTo(targetId, element) {
+      document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+      element.classList.add('active');
+
+      const targetElement = document.getElementById(targetId);
+      if (targetElement) {
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    /* 관리자 로그인 인증 비밀번호 체크 */
     function checkAdminPass() {
       const pass = document.getElementById('admin-pass-input').value;
-      if (pass === 'bizmap1234!') { // 💡 관리자 비밀번호
+      if (pass === 'bizmap1234!') {
         document.getElementById('admin-auth').style.display = 'none';
         loadAdminData();
       } else {
@@ -181,12 +192,10 @@
         return;
       }
 
-      // KPI 카운트
       document.getElementById('kpi-total-users').innerText = `${users.length}명`;
       const activeCount = users.filter(u => u.subscription_status !== 'inactive').length;
       document.getElementById('kpi-active-users').innerText = `${activeCount}명`;
 
-      // 테이블 바인딩
       const tbody = document.getElementById('user-table-body');
       if (users.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">가입된 유저가 없습니다.</td></tr>';
@@ -250,7 +259,7 @@
       `).join('');
     }
 
-    /* 유저 수신 상태 강제 전환 (관리자 권한) */
+    /* 유저 수신 상태 강제 전환 */
     async function toggleUserStatus(email, nextStatus) {
       if (!confirm(`해당 유저의 알림 상태를 [${nextStatus}]로 변경하시겠습니까?`)) return;
 
