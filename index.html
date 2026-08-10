@@ -28,6 +28,7 @@
     .nav a { color: #64748b; text-decoration: none; transition: color 0.2s; }
     .nav a:hover { color: #2563eb; }
     .btn-login { background: #2563eb; color: white; padding: 8px 18px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 600; cursor: pointer; border: none; }
+    .btn-mypage-nav { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 8px 18px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
     
     .hero { text-align: center; padding: 80px 20px 60px; background: linear-gradient(180deg, #eff6ff 0%, #f8fafc 100%); }
     .badge-group { display: flex; justify-content: center; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
@@ -143,7 +144,10 @@
       <a href="#pricing">요금제</a>
       <a href="#faq">FAQ</a>
     </div>
-    <button onclick="loginWithKakao()" class="btn-login">시작하기</button>
+    <div id="auth-nav">
+      <button id="nav-login-btn" onclick="loginWithKakao()" class="btn-login">시작하기</button>
+      <button id="nav-mypage-btn" onclick="openMyPage()" class="btn-mypage-nav" style="display: none;">👤 내 알림 설정</button>
+    </div>
   </header>
 
   <section class="hero">
@@ -153,7 +157,7 @@
     </div>
     <h1>지원사업 몰라서 놓친 정부지원금,<br>도대체 얼마일까요?</h1>
     <p>매일 41개 기관을 직접 순회할 시간 없는 대표님을 위해.<br><b>하루 130원(월 3,900원)</b>으로 내 사업에 딱 맞는 지원사업만 카톡으로 받아보세요.</p>
-    <button onclick="loginWithKakao()" class="btn-kakao">💬 3초 만에 카카오톡으로 시작하기</button>
+    <button id="hero-start-btn" onclick="loginWithKakao()" class="btn-kakao">💬 3초 만에 카카오톡으로 시작하기</button>
   </section>
 
   <section class="section" style="padding-bottom: 20px;">
@@ -319,6 +323,7 @@
     <p style="font-size: 12px; color: #64748b;">Copyright © 아이엠엘케이 (Bizmap). All rights reserved.</p>
   </footer>
 
+  <!-- 1. 최초 키워드 설정 모달 -->
   <div id="keyword-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 480px;">
       <button class="modal-close" onclick="closeModal('keyword-modal')">✕</button>
@@ -333,6 +338,39 @@
     </div>
   </div>
 
+  <!-- 2. 유저 마이페이지 모달 -->
+  <div id="mypage-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 480px;">
+      <button class="modal-close" onclick="closeModal('mypage-modal')">✕</button>
+      <div class="modal-title">👤 내 알림 설정 (마이페이지)</div>
+      <div class="modal-body">
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin-bottom: 18px; font-size: 14px;">
+          <p><b>회원명:</b> <span id="mypage-user-name">불러오는 중...</span></p>
+          <p style="margin-top: 4px;"><b>알림 상태:</b> <span style="background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">카톡 알림 가동 중</span></p>
+        </div>
+
+        <div style="margin-bottom: 18px;">
+          <label style="font-size: 14px; font-weight: 700; display: block; margin-bottom: 6px; color: #0f172a;">🎯 수신 중인 맞춤 키워드</label>
+          <p style="font-size: 12px; color: #64748b; margin-bottom: 8px;">지역이나 관심 분야를 쉼표(,)로 구분해 수정해 주세요.</p>
+          <input type="text" id="mypage-keywords" placeholder="예: 부산, 소상공인, IT" style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; outline: none;">
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-top: 1px solid #f1f5f9; margin-bottom: 20px;">
+          <label style="font-size: 14px; font-weight: 700; color: #0f172a;">📱 카카오톡 알림 수신</label>
+          <input type="checkbox" id="mypage-active-toggle" checked style="width: 18px; height: 18px; cursor: pointer;">
+        </div>
+
+        <div id="mypage-msg" style="font-size: 13px; text-align: center; margin-bottom: 12px; font-weight: 700; min-height: 20px;"></div>
+
+        <div style="display: flex; gap: 10px;">
+          <button onclick="closeModal('mypage-modal')" style="flex: 1; background: #f1f5f9; color: #475569; padding: 12px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer;">취소</button>
+          <button onclick="saveMyPageInfo()" style="flex: 2; background: #2563eb; color: white; padding: 12px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer;">설정 저장하기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 이용약관 모달 -->
   <div id="terms-modal" class="modal-overlay">
     <div class="modal-content">
       <button class="modal-close" onclick="closeModal('terms-modal')">✕</button>
@@ -372,6 +410,7 @@
     </div>
   </div>
 
+  <!-- 개인정보처리방침 모달 -->
   <div id="privacy-modal" class="modal-overlay">
     <div class="modal-content">
       <button class="modal-close" onclick="closeModal('privacy-modal')">✕</button>
@@ -418,15 +457,34 @@
 
     let currentKakaoUser = null;
 
-    /* 수정된 카카오 로그인 (에러 원인을 팝업으로 직접 출력) */
+    /* 로그인 시 헤더 및 버튼 상태 변경 */
+    function updateUIOnLogin() {
+      document.getElementById('nav-login-btn').style.display = 'none';
+      document.getElementById('nav-mypage-btn').style.display = 'inline-block';
+      const heroBtn = id('hero-start-btn');
+      if (heroBtn) {
+        heroBtn.innerText = '👤 내 알림 설정 (마이페이지)';
+        heroBtn.onclick = openMyPage;
+      }
+    }
+
+    function id(elemId) { return document.getElementById(elemId); }
+
+    /* 카카오 로그인 */
     function loginWithKakao() {
+      if (currentKakaoUser) {
+        openMyPage();
+        return;
+      }
+
       Kakao.Auth.login({
         success: function(authObj) {
           Kakao.API.request({
             url: '/v2/user/me',
-            success: function(res) {
+            success: async function(res) {
               currentKakaoUser = res;
-              openModal('keyword-modal');
+              updateUIOnLogin();
+              await checkUserOnboard(res);
             },
             fail: function(error) {
               alert('카카오 사용자 정보 조회 실패:\n' + JSON.stringify(error));
@@ -439,16 +497,44 @@
       });
     }
 
+    /* 유저 가입 여부 체크 및 온보딩 모달 */
+    async function checkUserOnboard(userRes) {
+      const email = userRes.kakao_account?.email || `kakao_${userRes.id}@bizmap.local`;
+      const { data, error } = await supabaseClient
+        .from('users')
+        .select('keywords')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (data && data.keywords && data.keywords.length > 0) {
+        const name = userRes.properties?.nickname || '사용자';
+        alert(`${name}님 환영합니다! 기존에 등록하신 키워드로 맞춤 알림이 매칭 중입니다.`);
+      } else {
+        openModal('keyword-modal');
+      }
+    }
+
+    /* 최초 키워드 저장 (DB Upsert) */
     async function saveUserInfo() {
+      if (!currentKakaoUser) {
+        alert('로그인 정보가 없습니다.');
+        return;
+      }
+
       const keywordsInput = document.getElementById('user-keywords').value;
       const keywordsList = keywordsInput.split(',').map(k => k.trim()).filter(k => k.length > 0);
+
+      if (keywordsList.length === 0) {
+        alert('최소 1개 이상의 키워드를 입력해 주세요.');
+        return;
+      }
 
       const email = currentKakaoUser.kakao_account?.email || `kakao_${currentKakaoUser.id}@bizmap.local`;
       const name = currentKakaoUser.properties?.nickname || '사용자';
 
       const { data, error } = await supabaseClient
         .from('users')
-        .insert([
+        .upsert([
           { 
             email: email,
             name: name,
@@ -456,17 +542,90 @@
             provider: 'kakao',
             subscription_status: 'active'
           }
-        ]);
+        ], { onConflict: 'email' });
 
       if (error) {
         console.error('DB 저장 에러:', error);
-        alert('가입 처리 중 오류가 발생했습니다. (이미 등록된 계정일 수 있습니다)');
+        alert('가입 처리 중 오류가 발생했습니다: ' + error.message);
       } else {
         alert(`${name}님, 맞춤 지원사업 알림 신청이 완벽하게 완료되었습니다!`);
         closeModal('keyword-modal');
       }
     }
 
+    /* 마이페이지 열기 및 DB 데이터 조회 */
+    async function openMyPage() {
+      if (!currentKakaoUser) {
+        loginWithKakao();
+        return;
+      }
+
+      const email = currentKakaoUser.kakao_account?.email || `kakao_${currentKakaoUser.id}@bizmap.local`;
+      const name = currentKakaoUser.properties?.nickname || '사용자';
+
+      document.getElementById('mypage-user-name').innerText = name;
+      document.getElementById('mypage-msg').innerText = '';
+
+      const { data, error } = await supabaseClient
+        .from('users')
+        .select('keywords, subscription_status')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (data) {
+        document.getElementById('mypage-keywords').value = Array.isArray(data.keywords) ? data.keywords.join(', ') : (data.keywords || '');
+        document.getElementById('mypage-active-toggle').checked = data.subscription_status !== 'inactive';
+      }
+
+      openModal('mypage-modal');
+    }
+
+    /* 마이페이지 키워드/알림 설정 수정 저장 */
+    async function saveMyPageInfo() {
+      if (!currentKakaoUser) return;
+
+      const keywordsInput = document.getElementById('mypage-keywords').value;
+      const keywordsList = keywordsInput.split(',').map(k => k.trim()).filter(k => k.length > 0);
+      const isActive = document.getElementById('mypage-active-toggle').checked;
+      const msgDiv = document.getElementById('mypage-msg');
+
+      if (keywordsList.length === 0) {
+        msgDiv.style.color = '#ef4444';
+        msgDiv.innerText = '⚠️ 키워드를 1개 이상 입력해 주세요.';
+        return;
+      }
+
+      msgDiv.style.color = '#2563eb';
+      msgDiv.innerText = '저장 중...';
+
+      const email = currentKakaoUser.kakao_account?.email || `kakao_${currentKakaoUser.id}@bizmap.local`;
+      const name = currentKakaoUser.properties?.nickname || '사용자';
+
+      const { error } = await supabaseClient
+        .from('users')
+        .upsert([
+          {
+            email: email,
+            name: name,
+            keywords: keywordsList,
+            provider: 'kakao',
+            subscription_status: isActive ? 'active' : 'inactive'
+          }
+        ], { onConflict: 'email' });
+
+      if (error) {
+        msgDiv.style.color = '#ef4444';
+        msgDiv.innerText = '❌ 저장 실패: ' + error.message;
+      } else {
+        msgDiv.style.color = '#16a34a';
+        msgDiv.innerText = '✅ 설정이 성공적으로 저장되었습니다!';
+        setTimeout(() => {
+          closeModal('mypage-modal');
+        }, 1000);
+      }
+    }
+
+    /* 시뮬레이터 목업 데이터 */
     const mockData = {
       all: [
         { org: '성남산업진흥원', region: '경기 / 판로·해외진출', title: '2026년 성남시 폴란드 방산 시장개척단 참가기업 모집', date: '~ 2026.08.18 까지', kw: '[경기 / 판로]' },
