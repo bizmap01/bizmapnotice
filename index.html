@@ -119,7 +119,7 @@
     .modal-body p, .modal-body ul { margin-bottom: 12px; }
     .modal-body ul { padding-left: 20px; }
 
-    /* 3가지 로그인 선택 버튼 스타일 */
+    /* 로그인 버튼 스타일 */
     .social-login-btn { width: 100%; padding: 14px; border-radius: 12px; font-size: 15px; font-weight: 800; border: none; cursor: pointer; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 10px; transition: transform 0.1s; }
     .social-login-btn:active { transform: scale(0.98); }
     .btn-kakao-style { background: #fee500; color: #000; }
@@ -472,7 +472,7 @@
     </div>
   </div>
 
-  <!-- 3. [개편] 구조화된 유저 마이페이지 모달 -->
+  <!-- 3. 구조화된 유저 마이페이지 모달 -->
   <div id="mypage-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 520px;">
       <button class="modal-close" onclick="closeModal('mypage-modal')">✕</button>
@@ -588,10 +588,33 @@
     let onboardingCategory = '소상공인';
     let mypageCategory = '소상공인';
 
-    const allRegions = ["전국", "서울특별시", "부산광역시", "대구광역시", "인천광역시", "광주광역시", "대전광역시", "울산광역시", "세종특별자치시", "경기도", "강원특별자치도", "충청북도", "충청남도", "전북특별자치도", "전라남도", "경상북도", "경상남도", "제주특별자치도"];
-    const allCategories = ["소상공인", "창업", "제조", "IT"];
+    const regionMap = {
+      "서울": "서울특별시", "부산": "부산광역시", "대구": "대구광역시", "인천": "인천광역시",
+      "광주": "광주광역시", "대전": "대전광역시", "울산": "울산광역시", "세종": "세종특별자치시",
+      "경기": "경기도", "강원": "강원특별자치도", "충북": "충청북도", "충남": "충청남도",
+      "전북": "전북특별자치도", "전남": "전라남도", "경북": "경상북도", "경남": "경상남도", "제주": "제주특별자치도", "전국": "전국"
+    };
 
     function id(elemId) { return document.getElementById(elemId); }
+
+    /* 문자열 지능형 지역 정규화 함수 */
+    function normalizeRegion(str) {
+      if (!str) return null;
+      for (let key in regionMap) {
+        if (str.includes(key)) return regionMap[key];
+      }
+      return null;
+    }
+
+    /* 문자열 지능형 기업형태 정규화 함수 */
+    function normalizeCategory(str) {
+      if (!str) return null;
+      if (str.includes("소상공인") || str.includes("자영업")) return "소상공인";
+      if (str.includes("창업")) return "창업";
+      if (str.includes("제조") || str.includes("중소")) return "제조";
+      if (str.includes("IT") || str.includes("스타트업")) return "IT";
+      return null;
+    }
 
     function openLoginOptionsModal() {
       if (currentKakaoUser) {
@@ -623,8 +646,10 @@
       }
     }
 
+    /* 로그아웃 시 전역 유저 객체 완벽 초기화 */
     function logoutWithKakao() {
       currentKakaoUser = null;
+      authProviderType = 'kakao';
       if (Kakao.Auth && Kakao.Auth.getAccessToken()) {
         Kakao.Auth.logout(function() {
           updateUIOnLogout();
@@ -638,7 +663,9 @@
       }
     }
 
+    /* 카카오 로그인 진입 시 기존 객체 강제 초기화 */
     function loginWithKakao() {
+      currentKakaoUser = null;
       authProviderType = 'kakao';
       Kakao.Auth.login({
         success: function(authObj) {
@@ -657,11 +684,13 @@
       });
     }
 
+    /* 구글 로그인 진입 시 기존 객체 강제 초기화 */
     function loginWithGoogle() {
+      currentKakaoUser = null;
       authProviderType = 'google';
       const dummyGoogleUser = {
         id: 'google_' + Date.now(),
-        kakao_account: { email: 'user@gmail.com' },
+        kakao_account: { email: 'google_user_' + Math.floor(Math.random()*1000) + '@gmail.com' },
         properties: { nickname: '구글회원' }
       };
       currentKakaoUser = dummyGoogleUser;
@@ -674,12 +703,14 @@
       document.getElementById('email-form-area').style.display = 'block';
     }
 
+    /* 이메일 로그인 진입 시 기존 객체 강제 초기화 */
     function loginWithEmail() {
-      const email = document.getElementById('input-email-val').value;
+      const email = document.getElementById('input-email-val').value.trim();
       if (!email || !email.includes('@')) {
         alert('올바른 이메일 주소를 입력해주세요.');
         return;
       }
+      currentKakaoUser = null;
       authProviderType = 'email';
       const dummyEmailUser = {
         id: 'email_' + Date.now(),
@@ -790,7 +821,7 @@
       updateUIOnLogin();
     }
 
-    /* 마이페이지 열기 및 DB 데이터 분리 파싱 복원 */
+    /* 마이페이지 열기 및 DB 데이터 파싱 지능형 복원 */
     async function openMyPage() {
       if (!currentKakaoUser) {
         openLoginOptionsModal();
@@ -819,12 +850,15 @@
         let detailKwList = [];
 
         rawKwList.forEach(k => {
-          if (allRegions.includes(k)) {
-            foundRegion = k;
-          } else if (allCategories.includes(k)) {
-            foundCategory = k;
+          const normReg = normalizeRegion(k);
+          const normCat = normalizeCategory(k);
+
+          if (normReg) {
+            foundRegion = normReg;
+          } else if (normCat) {
+            foundCategory = normCat;
           } else {
-            detailKwList.push(k);
+            if (k && k.length > 0) detailKwList.push(k);
           }
         });
 
