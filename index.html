@@ -126,7 +126,7 @@
     .btn-google-style { background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; }
     .btn-email-style { background: #0f172a; color: #ffffff; }
 
-    /* 온보딩 모달 전용 스타일 */
+    /* 폼 입력 요소 스타일 */
     .form-group { margin-bottom: 16px; }
     .form-label { font-size: 13.5px; font-weight: 700; color: #0f172a; margin-bottom: 6px; display: block; }
     .select-input, .text-input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; outline: none; background: #ffffff; }
@@ -347,7 +347,7 @@
     <p style="font-size: 12px; color: #64748b;">Copyright © 아이엠엘케이 (Bizmap). All rights reserved.</p>
   </footer>
 
-  <!-- 0. 💡 3가지 로그인 옵션 선택 모달 (신규) -->
+  <!-- 0. 3가지 로그인 옵션 선택 모달 -->
   <div id="login-choice-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 420px; text-align: center;">
       <button class="modal-close" onclick="closeModal('login-choice-modal')">✕</button>
@@ -366,7 +366,6 @@
         ✉️ 이메일로 가입 / 로그인
       </button>
 
-      <!-- 일반 이메일 입력 폼 (숨김) -->
       <div id="email-form-area" style="display: none; margin-top: 16px; text-align: left; border-top: 1px solid #e2e8f0; padding-top: 16px;">
         <input type="email" id="input-email-val" placeholder="이메일 주소 (example@naver.com)" class="text-input" style="margin-bottom: 8px;">
         <input type="password" id="input-pass-val" placeholder="비밀번호" class="text-input" style="margin-bottom: 12px;">
@@ -377,14 +376,13 @@
     </div>
   </div>
 
-  <!-- 1. 대한민국 17개 시/도 전체 등록 및 실시간 미리보기 모달 -->
+  <!-- 1. 온보딩 모달 -->
   <div id="keyword-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 520px;">
       <button class="modal-close" onclick="closeModal('keyword-modal')">✕</button>
       <div class="modal-title">🎯 맞춤 알림 조건 설정</div>
       <div class="modal-body">
         
-        <!-- non-카카오 유저 전화번호 필수 수집 영역 -->
         <div id="phone-input-group" class="form-group" style="display: none; background: #fffbebfb; border: 1px solid #fcd34d; padding: 12px; border-radius: 10px;">
           <label class="form-label" style="color: #b45309;">📱 카카오톡 수신 휴대폰 번호 (필수)</label>
           <input type="tel" id="user-phone-number" placeholder="예: 01012345678 (- 없이 입력)" class="text-input">
@@ -393,7 +391,7 @@
 
         <div class="form-group">
           <label class="form-label">📍 사업장 주요 지역 (시/도 선택)</label>
-          <select id="onboarding-region" class="select-input" onchange="updateLiveMatchPreview()">
+          <select id="onboarding-region" class="select-input" onchange="updateLiveMatchPreview('onboarding')">
             <option value="전국">전국 (지역 제한 없음)</option>
             <option value="서울특별시">서울특별시</option>
             <option value="부산광역시" selected>부산광역시</option>
@@ -417,17 +415,17 @@
 
         <div class="form-group">
           <label class="form-label">🏢 기업 형태 / 업력 구분</label>
-          <div class="chip-group">
-            <button type="button" class="chip-btn active" onclick="selectCategoryChip(this, '소상공인')">🏪 소상공인/자영업</button>
-            <button type="button" class="chip-btn" onclick="selectCategoryChip(this, '창업')">🚀 예비/초기창업</button>
-            <button type="button" class="chip-btn" onclick="selectCategoryChip(this, '제조')">🏭 제조/중소기업</button>
-            <button type="button" class="chip-btn" onclick="selectCategoryChip(this, 'IT')">🌐 IT/스타트업</button>
+          <div class="chip-group" id="onboarding-category-chips">
+            <button type="button" class="chip-btn active" data-cat="소상공인" onclick="selectCategoryChip('onboarding', this, '소상공인')">🏪 소상공인/자영업</button>
+            <button type="button" class="chip-btn" data-cat="창업" onclick="selectCategoryChip('onboarding', this, '창업')">🚀 예비/초기창업</button>
+            <button type="button" class="chip-btn" data-cat="제조" onclick="selectCategoryChip('onboarding', this, '제조')">🏭 제조/중소기업</button>
+            <button type="button" class="chip-btn" data-cat="IT" onclick="selectCategoryChip('onboarding', this, 'IT')">🌐 IT/스타트업</button>
           </div>
         </div>
 
         <div class="form-group">
           <label class="form-label">🔍 세부 관심 분야 (선택 입력)</label>
-          <input type="text" id="onboarding-detail-kw" placeholder="예: 마케팅, R&D, 바우처, 시설개선" class="text-input" value="마케팅, 바우처" oninput="updateLiveMatchPreview()">
+          <input type="text" id="onboarding-detail-kw" placeholder="예: 마케팅, R&D, 바우처, 시설개선" class="text-input" value="마케팅, 바우처" oninput="updateLiveMatchPreview('onboarding')">
         </div>
 
         <div class="live-preview-box">
@@ -435,9 +433,7 @@
             <span id="preview-match-count">💡 현재 조건 매칭 지원사업: 12건</span>
             <span style="font-size: 11px; color: #2563eb; font-weight: 700;">실시간 갱신 중 🔴</span>
           </div>
-          <div id="preview-item-list">
-            <!-- 동적 매칭 생성 -->
-          </div>
+          <div id="preview-item-list"></div>
         </div>
 
         <button onclick="saveUserInfoAndGoPay()" style="width: 100%; background: #2563eb; color: white; padding: 15px; border: none; border-radius: 12px; font-weight: 800; font-size: 16px; cursor: pointer; box-shadow: 0 4px 12px rgba(37,99,235,0.2);">
@@ -447,7 +443,7 @@
     </div>
   </div>
 
-  <!-- 2. 구독 결제 유도 모달 (Paywall) -->
+  <!-- 2. 구독 결제 모달 -->
   <div id="payment-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 480px; text-align: center;">
       <button class="modal-close" onclick="closeModal('payment-modal')">✕</button>
@@ -476,7 +472,7 @@
     </div>
   </div>
 
-  <!-- 3. 유저 마이페이지 모달 -->
+  <!-- 3. [개편] 구조화된 유저 마이페이지 모달 -->
   <div id="mypage-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 520px;">
       <button class="modal-close" onclick="closeModal('mypage-modal')">✕</button>
@@ -487,10 +483,47 @@
           <p style="margin-top: 4px;"><b>알림 상태:</b> <span style="background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">카톡 알림 가동 중</span></p>
         </div>
 
-        <div style="margin-bottom: 18px;">
-          <label style="font-size: 14px; font-weight: 700; display: block; margin-bottom: 6px; color: #0f172a;">🎯 수신 중인 맞춤 키워드</label>
-          <p style="font-size: 12px; color: #64748b; margin-bottom: 8px;">지역이나 관심 분야를 쉼표(,)로 구분해 수정해 주세요.</p>
-          <input type="text" id="mypage-keywords" placeholder="예: 부산, 소상공인, IT" style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; outline: none;">
+        <!-- 1차 지역 선택 드롭다운 -->
+        <div class="form-group">
+          <label class="form-label">📍 사업장 주요 지역 (시/도)</label>
+          <select id="mypage-region" class="select-input">
+            <option value="전국">전국 (지역 제한 없음)</option>
+            <option value="서울특별시">서울특별시</option>
+            <option value="부산광역시">부산광역시</option>
+            <option value="대구광역시">대구광역시</option>
+            <option value="인천광역시">인천광역시</option>
+            <option value="광주광역시">광주광역시</option>
+            <option value="대전광역시">대전광역시</option>
+            <option value="울산광역시">울산광역시</option>
+            <option value="세종특별자치시">세종특별자치시</option>
+            <option value="경기도">경기도</option>
+            <option value="강원특별자치도">강원특별자치도</option>
+            <option value="충청북도">충청북도</option>
+            <option value="충청남도">충청남도</option>
+            <option value="전북특별자치도">전북특별자치도</option>
+            <option value="전라남도">전라남도</option>
+            <option value="경상북도">경상북도</option>
+            <option value="경상남도">경상남도</option>
+            <option value="제주특별자치도">제주특별자치도</option>
+          </select>
+        </div>
+
+        <!-- 기업 형태 칩 버튼 -->
+        <div class="form-group">
+          <label class="form-label">🏢 기업 형태 / 업력 구분</label>
+          <div class="chip-group" id="mypage-category-chips">
+            <button type="button" class="chip-btn active" data-cat="소상공인" onclick="selectCategoryChip('mypage', this, '소상공인')">🏪 소상공인/자영업</button>
+            <button type="button" class="chip-btn" data-cat="창업" onclick="selectCategoryChip('mypage', this, '창업')">🚀 예비/초기창업</button>
+            <button type="button" class="chip-btn" data-cat="제조" onclick="selectCategoryChip('mypage', this, '제조')">🏭 제조/중소기업</button>
+            <button type="button" class="chip-btn" data-cat="IT" onclick="selectCategoryChip('mypage', this, 'IT')">🌐 IT/스타트업</button>
+          </div>
+        </div>
+
+        <!-- 세부 키워드 입력 -->
+        <div class="form-group">
+          <label class="form-label">🎯 세부 관심 분야 키워드</label>
+          <p style="font-size: 11.5px; color: #64748b; margin-bottom: 6px;">쉼표(,)로 구분해 수정해 주세요.</p>
+          <input type="text" id="mypage-detail-kw" placeholder="예: 마케팅, IT, 바우처" class="text-input">
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-top: 1px solid #f1f5f9; margin-bottom: 16px;">
@@ -500,7 +533,7 @@
 
         <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; margin-bottom: 20px;">
           <label style="font-size: 14px; font-weight: 700; display: block; margin-bottom: 8px; color: #0f172a;">📜 최근 발송된 알림톡 기록</label>
-          <div id="mypage-history-list" style="max-height: 180px; overflow-y: auto; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; font-size: 13px;">
+          <div id="mypage-history-list" style="max-height: 160px; overflow-y: auto; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; font-size: 13px;">
             <p style="color: #94a3b8; text-align: center; margin: 10px 0;">기록을 불러오는 중...</p>
           </div>
         </div>
@@ -551,12 +584,15 @@
     }
 
     let currentKakaoUser = null;
-    let authProviderType = 'kakao'; // kakao, google, email
-    let selectedCategory = '소상공인';
+    let authProviderType = 'kakao';
+    let onboardingCategory = '소상공인';
+    let mypageCategory = '소상공인';
+
+    const allRegions = ["전국", "서울특별시", "부산광역시", "대구광역시", "인천광역시", "광주광역시", "대전광역시", "울산광역시", "세종특별자치시", "경기도", "강원특별자치도", "충청북도", "충청남도", "전북특별자치도", "전라남도", "경상북도", "경상남도", "제주특별자치도"];
+    const allCategories = ["소상공인", "창업", "제조", "IT"];
 
     function id(elemId) { return document.getElementById(elemId); }
 
-    /* 로그인 선택창 열기 */
     function openLoginOptionsModal() {
       if (currentKakaoUser) {
         openMyPage();
@@ -565,7 +601,6 @@
       openModal('login-choice-modal');
     }
 
-    /* 로그인 성공 시 UI */
     function updateUIOnLogin() {
       document.getElementById('nav-login-btn').style.display = 'none';
       document.getElementById('nav-mypage-btn').style.display = 'inline-block';
@@ -577,7 +612,6 @@
       }
     }
 
-    /* 로그아웃 처리 */
     function updateUIOnLogout() {
       document.getElementById('nav-login-btn').style.display = 'inline-block';
       document.getElementById('nav-mypage-btn').style.display = 'none';
@@ -604,7 +638,6 @@
       }
     }
 
-    /* 1. 카카오 로그인 */
     function loginWithKakao() {
       authProviderType = 'kakao';
       Kakao.Auth.login({
@@ -624,7 +657,6 @@
       });
     }
 
-    /* 2. 구글 로그인 시뮬레이션 */
     function loginWithGoogle() {
       authProviderType = 'google';
       const dummyGoogleUser = {
@@ -638,7 +670,6 @@
       checkUserOnboard(dummyGoogleUser);
     }
 
-    /* 3. 이메일 로그인 시뮬레이션 */
     function showEmailFormView() {
       document.getElementById('email-form-area').style.display = 'block';
     }
@@ -661,7 +692,6 @@
       checkUserOnboard(dummyEmailUser);
     }
 
-    /* 온보딩 진입 처리 */
     async function checkUserOnboard(userRes) {
       if (authProviderType !== 'kakao') {
         document.getElementById('phone-input-group').style.display = 'block';
@@ -669,17 +699,23 @@
         document.getElementById('phone-input-group').style.display = 'none';
       }
       openModal('keyword-modal');
-      updateLiveMatchPreview();
+      updateLiveMatchPreview('onboarding');
     }
 
-    function selectCategoryChip(btnElement, catValue) {
-      document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active'));
+    function selectCategoryChip(targetModal, btnElement, catValue) {
+      const containerId = targetModal === 'onboarding' ? 'onboarding-category-chips' : 'mypage-category-chips';
+      document.querySelectorAll(`#${containerId} .chip-btn`).forEach(b => b.classList.remove('active'));
       btnElement.classList.add('active');
-      selectedCategory = catValue;
-      updateLiveMatchPreview();
+      
+      if (targetModal === 'onboarding') {
+        onboardingCategory = catValue;
+        updateLiveMatchPreview('onboarding');
+      } else {
+        mypageCategory = catValue;
+      }
     }
 
-    function updateLiveMatchPreview() {
+    function updateLiveMatchPreview(targetModal) {
       const region = document.getElementById('onboarding-region').value;
       const detailKw = document.getElementById('onboarding-detail-kw').value.trim();
 
@@ -688,18 +724,18 @@
       if (region.includes('부산') || region.includes('서울') || region.includes('경기')) baseCount += 7;
       if (detailKw.length > 0) baseCount += 4;
 
-      document.getElementById('preview-match-count').innerText = `💡 [${region} / ${selectedCategory}] 매칭 공고: 약 ${baseCount}건`;
+      document.getElementById('preview-match-count').innerText = `💡 [${region} / ${onboardingCategory}] 매칭 공고: 약 ${baseCount}건`;
 
       const previewList = document.getElementById('preview-item-list');
       const kwTag = detailKw ? detailKw.split(',')[0] : '지원금';
 
       previewList.innerHTML = `
         <div class="preview-item">
-          <div class="preview-item-title">2026년 ${region} ${selectedCategory} ${kwTag} 맞춤 지원공고</div>
+          <div class="preview-item-title">2026년 ${region} ${onboardingCategory} ${kwTag} 맞춤 지원공고</div>
           <div class="preview-item-sub">• 발행기관: ${region} 관련 기관 | 신청기한: ~ 2026.08.28 까지</div>
         </div>
         <div class="preview-item">
-          <div class="preview-item-title">2026년 디딤돌 ${selectedCategory} 혁신 성장 바우처 지원</div>
+          <div class="preview-item-title">2026년 디딤돌 ${onboardingCategory} 혁신 성장 바우처 지원</div>
           <div class="preview-item-sub">• 발행기관: 중소벤처기업부 | 신청기한: ~ 2026.09.05 까지</div>
         </div>
       `;
@@ -713,7 +749,7 @@
 
       const region = document.getElementById('onboarding-region').value;
       const detailKw = document.getElementById('onboarding-detail-kw').value.trim();
-      const combinedKeywords = [region, selectedCategory, ...detailKw.split(',').map(k => k.trim())].filter(k => k.length > 0);
+      const combinedKeywords = [region, onboardingCategory, ...detailKw.split(',').map(k => k.trim())].filter(k => k.length > 0);
 
       const email = currentKakaoUser.kakao_account?.email || `user_${currentKakaoUser.id}@bizmap.local`;
       const name = currentKakaoUser.properties?.nickname || '사용자';
@@ -754,6 +790,7 @@
       updateUIOnLogin();
     }
 
+    /* 마이페이지 열기 및 DB 데이터 분리 파싱 복원 */
     async function openMyPage() {
       if (!currentKakaoUser) {
         openLoginOptionsModal();
@@ -774,8 +811,35 @@
         .eq('email', email)
         .maybeSingle();
 
-      if (data) {
-        document.getElementById('mypage-keywords').value = Array.isArray(data.keywords) ? data.keywords.join(', ') : (data.keywords || '');
+      if (data && data.keywords) {
+        const rawKwList = Array.isArray(data.keywords) ? data.keywords : data.keywords.split(',').map(k => k.trim());
+        
+        let foundRegion = "부산광역시";
+        let foundCategory = "소상공인";
+        let detailKwList = [];
+
+        rawKwList.forEach(k => {
+          if (allRegions.includes(k)) {
+            foundRegion = k;
+          } else if (allCategories.includes(k)) {
+            foundCategory = k;
+          } else {
+            detailKwList.push(k);
+          }
+        });
+
+        document.getElementById('mypage-region').value = foundRegion;
+
+        mypageCategory = foundCategory;
+        document.querySelectorAll('#mypage-category-chips .chip-btn').forEach(b => {
+          if (b.getAttribute('data-cat') === foundCategory) {
+            b.classList.add('active');
+          } else {
+            b.classList.remove('active');
+          }
+        });
+
+        document.getElementById('mypage-detail-kw').value = detailKwList.join(', ');
         document.getElementById('mypage-active-toggle').checked = data.subscription_status !== 'inactive';
       }
 
@@ -805,16 +869,11 @@
     async function saveMyPageInfo() {
       if (!currentKakaoUser) return;
 
-      const keywordsInput = document.getElementById('mypage-keywords').value;
-      const keywordsList = keywordsInput.split(',').map(k => k.trim()).filter(k => k.length > 0);
+      const region = document.getElementById('mypage-region').value;
+      const detailKw = document.getElementById('mypage-detail-kw').value.trim();
+      const combinedKeywords = [region, mypageCategory, ...detailKw.split(',').map(k => k.trim())].filter(k => k.length > 0);
       const isActive = document.getElementById('mypage-active-toggle').checked;
       const msgDiv = document.getElementById('mypage-msg');
-
-      if (keywordsList.length === 0) {
-        msgDiv.style.color = '#ef4444';
-        msgDiv.innerText = '⚠️ 키워드를 1개 이상 입력해 주세요.';
-        return;
-      }
 
       msgDiv.style.color = '#2563eb';
       msgDiv.innerText = '저장 중...';
@@ -824,7 +883,7 @@
 
       const { error } = await supabaseClient
         .from('users')
-        .update({ name: name, keywords: keywordsList, subscription_status: isActive ? 'active' : 'inactive' })
+        .update({ name: name, keywords: combinedKeywords, subscription_status: isActive ? 'active' : 'inactive' })
         .eq('email', email);
 
       if (error) {
