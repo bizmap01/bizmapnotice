@@ -472,7 +472,7 @@
     </div>
   </div>
 
-  <!-- 3. 구조화된 유저 마이페이지 모달 -->
+  <!-- 3. 구조화된 유저 마이페이지 모달 (회원탈퇴 추가) -->
   <div id="mypage-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 520px;">
       <button class="modal-close" onclick="closeModal('mypage-modal')">✕</button>
@@ -483,7 +483,6 @@
           <p style="margin-top: 4px;"><b>알림 상태:</b> <span style="background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">카톡 알림 가동 중</span></p>
         </div>
 
-        <!-- 1차 지역 선택 드롭다운 -->
         <div class="form-group">
           <label class="form-label">📍 사업장 주요 지역 (시/도)</label>
           <select id="mypage-region" class="select-input">
@@ -508,7 +507,6 @@
           </select>
         </div>
 
-        <!-- 기업 형태 칩 버튼 -->
         <div class="form-group">
           <label class="form-label">🏢 기업 형태 / 업력 구분</label>
           <div class="chip-group" id="mypage-category-chips">
@@ -519,7 +517,6 @@
           </div>
         </div>
 
-        <!-- 세부 키워드 입력 -->
         <div class="form-group">
           <label class="form-label">🎯 세부 관심 분야 키워드</label>
           <p style="font-size: 11.5px; color: #64748b; margin-bottom: 6px;">쉼표(,)로 구분해 수정해 주세요.</p>
@@ -544,6 +541,11 @@
           <button onclick="logoutWithKakao()" style="background: #fff; color: #ef4444; border: 1px solid #fca5a5; padding: 12px 14px; border-radius: 10px; font-weight: 700; cursor: pointer;">로그아웃</button>
           <button onclick="closeModal('mypage-modal')" style="flex: 1; background: #f1f5f9; color: #475569; padding: 12px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer;">취소</button>
           <button onclick="saveMyPageInfo()" style="flex: 2; background: #2563eb; color: white; padding: 12px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer;">설정 저장하기</button>
+        </div>
+
+        <!-- 💡 회원 탈퇴하기 링크 추가 -->
+        <div style="text-align: right; margin-top: 14px;">
+          <a onclick="deleteAccount()" style="font-size: 12px; color: #94a3b8; text-decoration: underline; cursor: pointer;">회원 탈퇴하기</a>
         </div>
       </div>
     </div>
@@ -597,7 +599,6 @@
 
     function id(elemId) { return document.getElementById(elemId); }
 
-    /* 문자열 지능형 지역 정규화 함수 */
     function normalizeRegion(str) {
       if (!str) return null;
       for (let key in regionMap) {
@@ -606,7 +607,6 @@
       return null;
     }
 
-    /* 문자열 지능형 기업형태 정규화 함수 */
     function normalizeCategory(str) {
       if (!str) return null;
       if (str.includes("소상공인") || str.includes("자영업")) return "소상공인";
@@ -646,7 +646,6 @@
       }
     }
 
-    /* 로그아웃 시 전역 유저 객체 완벽 초기화 */
     function logoutWithKakao() {
       currentKakaoUser = null;
       authProviderType = 'kakao';
@@ -663,7 +662,6 @@
       }
     }
 
-    /* 카카오 로그인 진입 시 기존 객체 강제 초기화 */
     function loginWithKakao() {
       currentKakaoUser = null;
       authProviderType = 'kakao';
@@ -684,7 +682,6 @@
       });
     }
 
-    /* 구글 로그인 진입 시 기존 객체 강제 초기화 */
     function loginWithGoogle() {
       currentKakaoUser = null;
       authProviderType = 'google';
@@ -703,7 +700,6 @@
       document.getElementById('email-form-area').style.display = 'block';
     }
 
-    /* 이메일 로그인 진입 시 기존 객체 강제 초기화 */
     function loginWithEmail() {
       const email = document.getElementById('input-email-val').value.trim();
       if (!email || !email.includes('@')) {
@@ -821,7 +817,6 @@
       updateUIOnLogin();
     }
 
-    /* 마이페이지 열기 및 DB 데이터 파싱 지능형 복원 */
     async function openMyPage() {
       if (!currentKakaoUser) {
         openLoginOptionsModal();
@@ -927,6 +922,28 @@
         msgDiv.style.color = '#16a34a';
         msgDiv.innerText = '✅ 설정이 성공적으로 저장되었습니다!';
         setTimeout(() => { closeModal('mypage-modal'); }, 1000);
+      }
+    }
+
+    /* 💡 회원 탈퇴 처리 함수 */
+    async function deleteAccount() {
+      if (!currentKakaoUser) return;
+
+      const confirmDelete = confirm('정말로 비즈맵 서비스를 탈퇴하시겠습니까?\n\n탈퇴 시 등록된 맞춤 키워드 및 카톡 알림 설정 정보가 모두 즉시 삭제됩니다.');
+      if (!confirmDelete) return;
+
+      const email = currentKakaoUser.kakao_account?.email || `user_${currentKakaoUser.id}@bizmap.local`;
+
+      const { error } = await supabaseClient
+        .from('users')
+        .delete()
+        .eq('email', email);
+
+      if (error) {
+        alert('탈퇴 처리 중 오류가 발생했습니다: ' + error.message);
+      } else {
+        alert('회원 탈퇴가 성공적으로 완료되었습니다.\n그동안 비즈맵을 이용해 주셔서 감사합니다.');
+        logoutWithKakao();
       }
     }
 
