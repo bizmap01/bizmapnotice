@@ -338,7 +338,7 @@
     <p style="font-size: 12px; color: #64748b;">Copyright © 아이엠엘케이 (Bizmap). All rights reserved.</p>
   </footer>
 
-  <!-- 1. [개편] 최초 맞춤 조건 설정 및 실시간 매칭 미리보기 모달 -->
+  <!-- 1. 최초 맞춤 조건 설정 및 실시간 매칭 미리보기 모달 -->
   <div id="keyword-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 520px;">
       <button class="modal-close" onclick="closeModal('keyword-modal')">✕</button>
@@ -385,7 +385,7 @@
             <span style="font-size: 11px; color: #2563eb; font-weight: 700;">실시간 갱신 중 🔴</span>
           </div>
           <div id="preview-item-list">
-            <!-- 자바스크립트로 변경 시 실시간 바뀜 -->
+            <!-- 자바스크립트로 동적 변경됨 -->
           </div>
         </div>
 
@@ -396,7 +396,7 @@
     </div>
   </div>
 
-  <!-- 2. 결제 유도 모달 (Paywall) -->
+  <!-- 2. 구독 결제 유도 모달 (Paywall) -->
   <div id="payment-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 480px; text-align: center;">
       <button class="modal-close" onclick="closeModal('payment-modal')">✕</button>
@@ -540,22 +540,10 @@
       });
     }
 
-    /* 유저 가입 여부 체크 */
+    /* 유저 가입 여부 체크 (기존 유저도 온보딩/결제 흐름을 볼 수 있도록 개편 모달 우선 오픈) */
     async function checkUserOnboard(userRes) {
-      const email = userRes.kakao_account?.email || `kakao_${userRes.id}@bizmap.local`;
-      const { data } = await supabaseClient
-        .from('users')
-        .select('keywords')
-        .eq('email', email)
-        .maybeSingle();
-
-      if (data && data.keywords && data.keywords.length > 0) {
-        const name = userRes.properties?.nickname || '사용자';
-        alert(`${name}님 환영합니다! 설정하신 키워드로 맞춤 지원사업이 매칭 중입니다.`);
-      } else {
-        openModal('keyword-modal');
-        updateLiveMatchPreview();
-      }
+      openModal('keyword-modal');
+      updateLiveMatchPreview();
     }
 
     /* 기업 형태 칩 버튼 선택 */
@@ -571,7 +559,6 @@
       const region = document.getElementById('onboarding-region').value;
       const detailKw = document.getElementById('onboarding-detail-kw').value.trim();
 
-      // 조건별 가상 동적 매칭 카운트 계산
       let baseCount = 8;
       if (region === '전국') baseCount += 15;
       if (region === '부산' || region === '서울' || region === '경기') baseCount += 7;
@@ -633,7 +620,7 @@
         alert('저장 중 오류 발생: ' + dbError.message);
       } else {
         closeModal('keyword-modal');
-        openModal('payment-modal'); // 💳 결제 모달 오픈
+        openModal('payment-modal');
       }
     }
 
