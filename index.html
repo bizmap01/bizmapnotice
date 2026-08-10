@@ -472,14 +472,18 @@
     </div>
   </div>
 
-  <!-- 3. 구조화된 유저 마이페이지 모달 (회원탈퇴 추가) -->
+  <!-- 3. 구조화된 유저 마이페이지 모달 (로그인 수단 표시 명확화) -->
   <div id="mypage-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 520px;">
       <button class="modal-close" onclick="closeModal('mypage-modal')">✕</button>
       <div class="modal-title">👤 내 알림 설정 (마이페이지)</div>
       <div class="modal-body">
+        
+        <!-- 회원정보 및 로그인 수단 표기 영역 -->
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin-bottom: 18px; font-size: 14px;">
           <p><b>회원명:</b> <span id="mypage-user-name">불러오는 중...</span></p>
+          <p style="margin-top: 4px;"><b>로그인 계정:</b> <span id="mypage-user-email" style="color: #2563eb; font-weight: 700;">불러오는 중...</span></p>
+          <p style="margin-top: 4px;"><b>로그인 수단:</b> <span id="mypage-user-provider" style="background: #eff6ff; color: #1d4ed8; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">불러오는 중...</span></p>
           <p style="margin-top: 4px;"><b>알림 상태:</b> <span style="background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">카톡 알림 가동 중</span></p>
         </div>
 
@@ -543,7 +547,6 @@
           <button onclick="saveMyPageInfo()" style="flex: 2; background: #2563eb; color: white; padding: 12px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer;">설정 저장하기</button>
         </div>
 
-        <!-- 💡 회원 탈퇴하기 링크 추가 -->
         <div style="text-align: right; margin-top: 14px;">
           <a onclick="deleteAccount()" style="font-size: 12px; color: #94a3b8; text-decoration: underline; cursor: pointer;">회원 탈퇴하기</a>
         </div>
@@ -624,6 +627,7 @@
       openModal('login-choice-modal');
     }
 
+    /* 로그인 시 헤더 및 메인 버튼 상태 변경 */
     function updateUIOnLogin() {
       document.getElementById('nav-login-btn').style.display = 'none';
       document.getElementById('nav-mypage-btn').style.display = 'inline-block';
@@ -635,6 +639,7 @@
       }
     }
 
+    /* 로그아웃 시 메인 버튼을 원래 시작하기로 원복 */
     function updateUIOnLogout() {
       document.getElementById('nav-login-btn').style.display = 'inline-block';
       document.getElementById('nav-mypage-btn').style.display = 'none';
@@ -649,7 +654,7 @@
     function logoutWithKakao() {
       currentKakaoUser = null;
       authProviderType = 'kakao';
-      if (Kakao.Auth && Kakao.Auth.getAccessToken()) {
+      if (window.Kakao && Kakao.Auth && Kakao.Auth.getAccessToken()) {
         Kakao.Auth.logout(function() {
           updateUIOnLogout();
           closeModal('mypage-modal');
@@ -817,6 +822,7 @@
       updateUIOnLogin();
     }
 
+    /* 마이페이지 오픈 (로그인 수단 및 가입계정 명확히 표시) */
     async function openMyPage() {
       if (!currentKakaoUser) {
         openLoginOptionsModal();
@@ -826,7 +832,13 @@
       const email = currentKakaoUser.kakao_account?.email || `user_${currentKakaoUser.id}@bizmap.local`;
       const name = currentKakaoUser.properties?.nickname || '사용자';
 
+      let providerLabel = '💬 카카오톡 소셜 로그인';
+      if (authProviderType === 'google') providerLabel = '🌐 구글 계정 로그인';
+      if (authProviderType === 'email') providerLabel = '✉️ 일반 이메일 로그인';
+
       document.getElementById('mypage-user-name').innerText = name;
+      document.getElementById('mypage-user-email').innerText = email;
+      document.getElementById('mypage-user-provider').innerText = providerLabel;
       document.getElementById('mypage-msg').innerText = '';
 
       openModal('mypage-modal');
@@ -925,7 +937,6 @@
       }
     }
 
-    /* 💡 회원 탈퇴 처리 함수 */
     async function deleteAccount() {
       if (!currentKakaoUser) return;
 
