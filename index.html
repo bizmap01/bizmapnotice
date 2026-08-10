@@ -28,7 +28,8 @@
     .nav a { color: #64748b; text-decoration: none; transition: color 0.2s; }
     .nav a:hover { color: #2563eb; }
     .btn-login { background: #2563eb; color: white; padding: 8px 18px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 600; cursor: pointer; border: none; }
-    .btn-mypage-nav { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 8px 18px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .btn-mypage-nav { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .btn-logout-nav { background: #ffffff; color: #ef4444; border: 1px solid #fca5a5; padding: 8px 14px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; margin-left: 6px; }
     
     .hero { text-align: center; padding: 80px 20px 60px; background: linear-gradient(180deg, #eff6ff 0%, #f8fafc 100%); }
     .badge-group { display: flex; justify-content: center; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
@@ -118,7 +119,7 @@
     .modal-body p, .modal-body ul { margin-bottom: 12px; }
     .modal-body ul { padding-left: 20px; }
 
-    /* 개편된 온보딩 모달 스타일 */
+    /* 온보딩 모달 전용 스타일 */
     .form-group { margin-bottom: 16px; }
     .form-label { font-size: 13.5px; font-weight: 700; color: #0f172a; margin-bottom: 6px; display: block; }
     .select-input, .text-input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; outline: none; background: #ffffff; }
@@ -162,6 +163,7 @@
     <div id="auth-nav">
       <button id="nav-login-btn" onclick="loginWithKakao()" class="btn-login">시작하기</button>
       <button id="nav-mypage-btn" onclick="openMyPage()" class="btn-mypage-nav" style="display: none;">👤 내 알림 설정</button>
+      <button id="nav-logout-btn" onclick="logoutWithKakao()" class="btn-logout-nav" style="display: none;">로그아웃</button>
     </div>
   </header>
 
@@ -378,14 +380,14 @@
           <input type="text" id="onboarding-detail-kw" placeholder="예: 마케팅, R&D, 바우처, 시설개선" class="text-input" value="마케팅, 바우처" oninput="updateLiveMatchPreview()">
         </div>
 
-        <!-- 💡 실시간 매칭 결과 미리보기 박스 -->
+        <!-- 실시간 매칭 결과 미리보기 박스 -->
         <div class="live-preview-box">
           <div class="live-preview-header">
             <span id="preview-match-count">💡 현재 조건 매칭 지원사업: 12건</span>
             <span style="font-size: 11px; color: #2563eb; font-weight: 700;">실시간 갱신 중 🔴</span>
           </div>
           <div id="preview-item-list">
-            <!-- 자바스크립트로 동적 변경됨 -->
+            <!-- 동적 매칭 생성 -->
           </div>
         </div>
 
@@ -425,7 +427,7 @@
     </div>
   </div>
 
-  <!-- 3. 유저 마이페이지 모달 -->
+  <!-- 3. 유저 마이페이지 모달 (로그아웃 버튼 포함) -->
   <div id="mypage-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 520px;">
       <button class="modal-close" onclick="closeModal('mypage-modal')">✕</button>
@@ -456,7 +458,8 @@
 
         <div id="mypage-msg" style="font-size: 13px; text-align: center; margin-bottom: 12px; font-weight: 700; min-height: 20px;"></div>
 
-        <div style="display: flex; gap: 10px;">
+        <div style="display: flex; gap: 8px;">
+          <button onclick="logoutWithKakao()" style="background: #fff; color: #ef4444; border: 1px solid #fca5a5; padding: 12px 14px; border-radius: 10px; font-weight: 700; cursor: pointer;">로그아웃</button>
           <button onclick="closeModal('mypage-modal')" style="flex: 1; background: #f1f5f9; color: #475569; padding: 12px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer;">취소</button>
           <button onclick="saveMyPageInfo()" style="flex: 2; background: #2563eb; color: white; padding: 12px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer;">설정 저장하기</button>
         </div>
@@ -501,9 +504,13 @@
     let currentKakaoUser = null;
     let selectedCategory = '소상공인';
 
+    function id(elemId) { return document.getElementById(elemId); }
+
+    /* 로그인 성공 시 UI */
     function updateUIOnLogin() {
       document.getElementById('nav-login-btn').style.display = 'none';
       document.getElementById('nav-mypage-btn').style.display = 'inline-block';
+      document.getElementById('nav-logout-btn').style.display = 'inline-block';
       const heroBtn = id('hero-start-btn');
       if (heroBtn) {
         heroBtn.innerText = '👤 내 알림 설정 (마이페이지)';
@@ -511,7 +518,32 @@
       }
     }
 
-    function id(elemId) { return document.getElementById(elemId); }
+    /* 로그아웃 처리 및 UI 초기화 */
+    function updateUIOnLogout() {
+      document.getElementById('nav-login-btn').style.display = 'inline-block';
+      document.getElementById('nav-mypage-btn').style.display = 'none';
+      document.getElementById('nav-logout-btn').style.display = 'none';
+      const heroBtn = id('hero-start-btn');
+      if (heroBtn) {
+        heroBtn.innerText = '💬 3초 만에 카카오톡으로 시작하기';
+        heroBtn.onclick = loginWithKakao;
+      }
+    }
+
+    function logoutWithKakao() {
+      currentKakaoUser = null;
+      if (Kakao.Auth && Kakao.Auth.getAccessToken()) {
+        Kakao.Auth.logout(function() {
+          updateUIOnLogout();
+          closeModal('mypage-modal');
+          alert('로그아웃 되었습니다.');
+        });
+      } else {
+        updateUIOnLogout();
+        closeModal('mypage-modal');
+        alert('로그아웃 되었습니다.');
+      }
+    }
 
     /* 카카오 로그인 */
     function loginWithKakao() {
@@ -540,7 +572,7 @@
       });
     }
 
-    /* 유저 가입 여부 체크 (기존 유저도 온보딩/결제 흐름을 볼 수 있도록 개편 모달 우선 오픈) */
+    /* 유저 온보딩 모달 열기 */
     async function checkUserOnboard(userRes) {
       openModal('keyword-modal');
       updateLiveMatchPreview();
