@@ -109,7 +109,7 @@
     .footer-links a:hover { color: #60a5fa; text-decoration: underline; }
 
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.75); z-index: 1000; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(4px); }
-    .modal-content { background: #ffffff; width: 100%; max-width: 850px; max-height: 80vh; border-radius: 20px; padding: 36px 30px; position: relative; overflow-y: auto; text-align: left; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
+    .modal-content { background: #ffffff; width: 100%; max-width: 850px; max-height: 85vh; border-radius: 20px; padding: 36px 30px; position: relative; overflow-y: auto; text-align: left; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
     .modal-title { font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; }
     .modal-close { position: absolute; top: 24px; right: 24px; font-size: 22px; cursor: pointer; border: none; background: #f1f5f9; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #64748b; }
     .modal-body { font-size: 14px; color: #334155; line-height: 1.7; }
@@ -338,9 +338,9 @@
     </div>
   </div>
 
-  <!-- 2. 유저 마이페이지 모달 -->
+  <!-- 2. 유저 마이페이지 모달 (수신 이력 추가) -->
   <div id="mypage-modal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 480px;">
+    <div class="modal-content" style="max-width: 520px;">
       <button class="modal-close" onclick="closeModal('mypage-modal')">✕</button>
       <div class="modal-title">👤 내 알림 설정 (마이페이지)</div>
       <div class="modal-body">
@@ -355,9 +355,17 @@
           <input type="text" id="mypage-keywords" placeholder="예: 부산, 소상공인, IT" style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; outline: none;">
         </div>
 
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-top: 1px solid #f1f5f9; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-top: 1px solid #f1f5f9; margin-bottom: 16px;">
           <label style="font-size: 14px; font-weight: 700; color: #0f172a;">📱 카카오톡 알림 수신</label>
           <input type="checkbox" id="mypage-active-toggle" checked style="width: 18px; height: 18px; cursor: pointer;">
+        </div>
+
+        <!-- 💡 새로 추가된 알림 수신 기록 영역 -->
+        <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; margin-bottom: 20px;">
+          <label style="font-size: 14px; font-weight: 700; display: block; margin-bottom: 8px; color: #0f172a;">📜 최근 발송된 알림톡 기록</label>
+          <div id="mypage-history-list" style="max-height: 180px; overflow-y: auto; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; font-size: 13px;">
+            <p style="color: #94a3b8; text-align: center; margin: 10px 0;">기록을 불러오는 중...</p>
+          </div>
         </div>
 
         <div id="mypage-msg" style="font-size: 13px; text-align: center; margin-bottom: 12px; font-weight: 700; min-height: 20px;"></div>
@@ -514,7 +522,7 @@
       }
     }
 
-    /* 최초 키워드 저장 (이메일 중복 체크 후 분기 처리로 오류 완벽 방지) */
+    /* 최초 키워드 저장 (중복 체크 후 분기 처리) */
     async function saveUserInfo() {
       if (!currentKakaoUser) {
         alert('로그인 정보가 없습니다.');
@@ -532,7 +540,6 @@
       const email = currentKakaoUser.kakao_account?.email || `kakao_${currentKakaoUser.id}@bizmap.local`;
       const name = currentKakaoUser.properties?.nickname || '사용자';
 
-      // 1. 기존 유저 조회
       const { data: existingUser } = await supabaseClient
         .from('users')
         .select('email')
@@ -542,7 +549,6 @@
       let dbError = null;
 
       if (existingUser) {
-        // 이미 가입된 계정이면 UPDATE
         const { error } = await supabaseClient
           .from('users')
           .update({
@@ -554,7 +560,6 @@
           .eq('email', email);
         dbError = error;
       } else {
-        // 신규 계정이면 INSERT
         const { error } = await supabaseClient
           .from('users')
           .insert([
@@ -579,7 +584,7 @@
       }
     }
 
-    /* 마이페이지 열기 및 DB 데이터 조회 */
+    /* 마이페이지 열기 (DB 데이터 + 수신 알림 이력 가져오기) */
     async function openMyPage() {
       if (!currentKakaoUser) {
         loginWithKakao();
@@ -592,7 +597,10 @@
       document.getElementById('mypage-user-name').innerText = name;
       document.getElementById('mypage-msg').innerText = '';
 
-      const { data, error } = await supabaseClient
+      openModal('mypage-modal');
+
+      // 1. 유저 설정 불러오기
+      const { data } = await supabaseClient
         .from('users')
         .select('keywords, subscription_status')
         .eq('email', email)
@@ -603,10 +611,31 @@
         document.getElementById('mypage-active-toggle').checked = data.subscription_status !== 'inactive';
       }
 
-      openModal('mypage-modal');
+      // 2. 수신 알림 이력 불러오기 (notification_logs 테이블)
+      const historyDiv = document.getElementById('mypage-history-list');
+      const { data: logs, error: logsErr } = await supabaseClient
+        .from('notification_logs')
+        .select('title, created_at, link')
+        .eq('email', email)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (logs && logs.length > 0) {
+        historyDiv.innerHTML = logs.map(log => `
+          <div style="border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 8px;">
+            <div style="font-weight: 700; color: #0f172a; font-size: 13px;">${log.title}</div>
+            <div style="font-size: 11px; color: #64748b; display: flex; justify-content: space-between; margin-top: 4px;">
+              <span>📅 ${new Date(log.created_at).toLocaleDateString('ko-KR')}</span>
+              ${log.link ? `<a href="${log.link}" target="_blank" style="color: #2563eb; font-weight: 700; text-decoration: none;">원문 보기 🔗</a>` : ''}
+            </div>
+          </div>
+        `).join('');
+      } else {
+        historyDiv.innerHTML = '<p style="color: #94a3b8; text-align: center; margin: 12px 0;">아직 수신된 알림톡 내역이 없습니다.</p>';
+      }
     }
 
-    /* 마이페이지 키워드/알림 설정 수정 저장 */
+    /* 마이페이지 설정 저장 */
     async function saveMyPageInfo() {
       if (!currentKakaoUser) return;
 
