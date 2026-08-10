@@ -3,160 +3,440 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>비즈맵(Bizmap) - 맞춤형 지원사업 카톡 알림</title>
-  
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>비즈맵(Bizmap) - 지원사업 맞춤 카카오톡 알림</title>
+
   <!-- Supabase SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Kakao SDK -->
   <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js"></script>
 
   <style>
-    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-    body { font-family: "Pretendard", sans-serif; }
+    html { scroll-behavior: smooth; }
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+      font-family: 'Pretendard', -apple-system, sans-serif;
+      word-break: keep-all; /* 한국어 어절 단위 줄바꿈 */
+      text-wrap: balance;  /* 모바일 줄 길이 자동 밸런스 */
+    }
+    body { background-color: #f8fafc; color: #1e293b; line-height: 1.7; }
+    
+    /* Header Navigation */
+    header { display: flex; justify-content: space-between; align-items: center; padding: 18px 8%; background: #ffffff; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 100; }
+    .logo { font-size: 22px; font-weight: 800; color: #2563eb; text-decoration: none; cursor: pointer; }
+    .nav { display: flex; gap: 24px; font-size: 15px; color: #64748b; font-weight: 600; }
+    .nav a { color: #64748b; text-decoration: none; transition: color 0.2s; }
+    .nav a:hover { color: #2563eb; }
+    .btn-login { background: #2563eb; color: white; padding: 8px 18px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 600; cursor: pointer; border: none; }
+    
+    /* Hero Section */
+    .hero { text-align: center; padding: 80px 20px 60px; background: linear-gradient(180deg, #eff6ff 0%, #f8fafc 100%); }
+    .badge-group { display: flex; justify-content: center; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+    .badge { background: #dbeafe; color: #1d4ed8; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; }
+    .badge-live { background: #dcfce7; color: #15803d; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; }
+    .hero h1 { font-size: 40px; font-weight: 900; color: #0f172a; margin-bottom: 24px; line-height: 1.4; }
+    .hero p { font-size: 18px; color: #475569; margin-bottom: 40px; line-height: 1.75; }
+    .btn-kakao { display: inline-flex; align-items: center; justify-content: center; background: #FEE500; color: #000000; font-weight: 800; font-size: 18px; padding: 18px 40px; border-radius: 12px; text-decoration: none; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); transition: transform 0.2s; cursor: pointer; border: none; }
+    .btn-kakao:hover { transform: translateY(-2px); }
+
+    /* Target Customer Cards */
+    .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 20px; }
+    .target-card { background: white; padding: 30px 24px; border-radius: 16px; border: 1px solid #e2e8f0; text-align: center; }
+    .target-icon { font-size: 36px; margin-bottom: 16px; }
+    .target-title { font-weight: 800; font-size: 18px; margin-bottom: 12px; color: #0f172a; }
+    .target-desc { font-size: 14px; color: #64748b; line-height: 1.6; }
+
+    /* Interactive Kakao Simulator Section */
+    .preview-section { background: #ffffff; padding: 80px 20px; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; text-align: center; }
+    .filter-buttons { display: flex; justify-content: center; gap: 10px; margin-bottom: 32px; flex-wrap: wrap; }
+    .filter-btn { background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; padding: 10px 20px; border-radius: 20px; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.2s; }
+    .filter-btn.active { background: #2563eb; color: white; border-color: #2563eb; }
+    
+    .phone-mockup { width: 360px; background: #abc1d1; border-radius: 36px; padding: 24px 16px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); border: 8px solid #1e293b; margin: 0 auto; text-align: left; }
+    .chat-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding: 0 4px; }
+    .chat-profile-img { width: 36px; height: 36px; background: #2563eb; color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; }
+    .chat-profile-name { font-size: 14px; font-weight: 700; color: #1e293b; }
+    
+    .chat-bubble { background: white; border-radius: 14px; padding: 16px; font-size: 13px; color: #1e293b; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 14px; animation: fadeIn 0.3s ease-in-out; }
+    .chat-tag { display: inline-block; background: #fee500; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 4px; margin-bottom: 6px; color: #000; }
+    .chat-title { font-weight: 800; font-size: 14px; margin-bottom: 10px; color: #0f172a; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; }
+    .chat-info-list { line-height: 1.6; font-size: 12.5px; color: #334155; margin-bottom: 10px; }
+    .chat-info-list b { color: #0f172a; }
+    .chat-btn { display: block; background: #f8fafc; border: 1px solid #cbd5e1; text-align: center; padding: 8px; border-radius: 8px; font-weight: 700; color: #2563eb; text-decoration: none; margin-top: 8px; font-size: 12.5px; cursor: pointer; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Section Global */
+    .section { max-width: 1080px; margin: 0 auto; padding: 90px 20px; }
+    .section-title { text-align: center; font-size: 30px; font-weight: 800; margin-bottom: 52px; color: #0f172a; line-height: 1.45; }
+
+    /* Problem Cards */
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+    .card-problem { background: white; padding: 36px 30px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .card-problem .icon { font-size: 38px; margin-bottom: 20px; }
+    .card-problem h3 { font-size: 20px; font-weight: 700; margin-bottom: 14px; }
+    .card-problem p { color: #64748b; font-size: 15px; line-height: 1.65; }
+
+    /* Solutions */
+    .solution-list { background: white; border-radius: 20px; padding: 24px; border: 1px solid #e2e8f0; }
+    .solution-item { display: flex; align-items: flex-start; gap: 24px; padding: 28px 24px; border-bottom: 1px solid #f1f5f9; }
+    .solution-item:last-child { border-bottom: none; }
+    .solution-icon { background: #eff6ff; color: #2563eb; width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0; }
+    .solution-text h4 { font-size: 19px; font-weight: 700; margin-bottom: 10px; }
+    .solution-text p { color: #64748b; font-size: 15.5px; line-height: 1.65; }
+
+    /* Pricing */
+    .pricing-container { display: flex; justify-content: center; gap: 32px; flex-wrap: wrap; }
+    .price-card { background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 44px 32px; width: 340px; text-align: center; position: relative; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .price-card.best { border: 2px solid #2563eb; }
+    .price-badge { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: #2563eb; color: white; padding: 4px 14px; border-radius: 12px; font-size: 12px; font-weight: 700; }
+    .price-title { font-size: 20px; font-weight: 700; margin-bottom: 18px; }
+    .price-amount { font-size: 36px; font-weight: 900; color: #0f172a; margin-bottom: 10px; }
+    .price-amount span { font-size: 16px; font-weight: 500; color: #64748b; }
+    .price-features { list-style: none; margin: 28px 0; text-align: left; font-size: 15px; color: #475569; }
+    .price-features li { margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .btn-subscribe { display: block; width: 100%; background: #0f172a; color: white; padding: 14px; border-radius: 10px; text-decoration: none; font-weight: 700; border: none; cursor: pointer; text-align: center; }
+    .price-card.best .btn-subscribe { background: #2563eb; }
+
+    /* FAQ Section */
+    .faq-list { max-width: 840px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+    .faq-item { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 28px 32px; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+    .faq-q { font-weight: 800; font-size: 18px; color: #0f172a; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+    .faq-q span { color: #2563eb; font-size: 22px; font-weight: 900; }
+    .faq-a { color: #475569; font-size: 15.5px; line-height: 1.7; padding-left: 32px; }
+
+    /* Detailed Business Footer */
+    footer { text-align: center; padding: 50px 20px; background: #0f172a; color: #94a3b8; font-size: 13.5px; line-height: 1.8; }
+    .footer-info { max-width: 900px; margin: 0 auto 20px; text-align: center; border-bottom: 1px solid #334155; padding-bottom: 24px; }
+    .footer-info p { margin-bottom: 6px; }
+    .footer-links { display: flex; justify-content: center; gap: 20px; margin-bottom: 20px; font-weight: 600; }
+    .footer-links a { color: #cbd5e1; text-decoration: none; cursor: pointer; }
+    .footer-links a:hover { color: #60a5fa; text-decoration: underline; }
+
+    /* Modal Overlay */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.75); z-index: 1000; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(4px); }
+    .modal-content { background: #ffffff; width: 100%; max-width: 850px; max-height: 80vh; border-radius: 20px; padding: 36px 30px; position: relative; overflow-y: auto; text-align: left; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
+    .modal-title { font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; }
+    .modal-close { position: absolute; top: 24px; right: 24px; font-size: 22px; cursor: pointer; border: none; background: #f1f5f9; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #64748b; }
+    .modal-body { font-size: 14px; color: #334155; line-height: 1.7; }
+    .modal-body h3 { font-size: 16px; font-weight: 700; margin: 20px 0 8px; color: #0f172a; }
+    .modal-body p, .modal-body ul { margin-bottom: 12px; }
+    .modal-body ul { padding-left: 20px; }
+
+    /* Mobile Responsive Optimizations */
+    @media (max-width: 768px) {
+      header { padding: 14px 20px; }
+      .nav { gap: 14px; font-size: 13.5px; }
+      .hero { padding: 50px 16px 40px; }
+      .hero h1 { font-size: 26px; margin-bottom: 18px; }
+      .hero p { font-size: 15px; margin-bottom: 28px; }
+      .btn-kakao { font-size: 16px; padding: 15px 24px; width: 100%; }
+      .section { padding: 60px 16px; }
+      .section-title { font-size: 22px; margin-bottom: 36px; }
+      .phone-mockup { width: 100%; max-width: 340px; }
+      .price-card { width: 100%; }
+      .faq-item { padding: 20px; }
+      .faq-a { padding-left: 0; margin-top: 8px; }
+      .modal-content { padding: 24px 18px; }
+    }
   </style>
 </head>
-<body class="bg-gray-50 text-gray-900 antialiased">
+<body id="top">
 
-  <!-- 1. 상단 네비게이션바 -->
-  <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-200">
-    <div class="max-w-6xl mx-auto px-6 h-16 flex justify-between items-center">
-      <div class="flex items-center gap-2">
-        <span class="text-2xl font-black text-blue-600 tracking-tight">Bizmap</span>
-        <span class="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">알림톡</span>
-      </div>
-      <button onclick="loginWithKakao()" class="text-sm font-bold text-gray-700 hover:text-blue-600 transition">
-        로그인 / 가입
-      </button>
+  <!-- Header Navigation -->
+  <header>
+    <a href="#top" class="logo">Bizmap</a>
+    <div class="nav">
+      <a href="#features">소개</a>
+      <a href="#preview">알림 예시</a>
+      <a href="#pricing">요금제</a>
+      <a href="#faq">FAQ</a>
     </div>
+    <button onclick="loginWithKakao()" class="btn-login">시작하기</button>
   </header>
 
-  <!-- 2. 히어로 섹션 -->
-  <section class="max-w-4xl mx-auto px-6 pt-20 pb-16 text-center">
-    <div class="inline-flex items-center gap-2 bg-amber-100 text-amber-900 text-xs font-bold px-4 py-2 rounded-full mb-8 shadow-sm">
-      <span>🔔</span> 매일 아침 9시, 내 사업장 맞춤 지원사업 발송
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="badge-group">
+      <span class="badge">⚡ 소상공인 · 스타트업 맞춤 알림</span>
+      <span class="badge-live">🔴 오늘 신규 수집: 24건 | 모니터링: 41개+</span>
     </div>
+    <h1>지원사업 몰라서 놓친 정부지원금,<br>도대체 얼마일까요?</h1>
+    <p>매일 41개 기관을 직접 순회할 시간 없는 대표님을 위해.<br><b>하루 130원(월 3,900원)</b>으로 내 사업에 딱 맞는 지원사업만 카톡으로 받아보세요.</p>
+    <button onclick="loginWithKakao()" class="btn-kakao">💬 3초 만에 카카오톡으로 시작하기</button>
+  </section>
 
-    <!-- 겹침 문제 해결된 메인 타이틀 -->
-    <h1 class="text-3xl sm:text-5xl font-extrabold text-gray-900 tracking-tight leading-snug mb-6">
-      정부지원사업 공고,<br>
-      <span class="text-blue-600 inline-block">카카오톡</span>으로 편하게 받아보세요
-    </h1>
-
-    <p class="text-base sm:text-xl text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed">
-      매번 복잡한 공고 사이트를 헤매지 마세요.<br class="hidden sm:block">
-      사업장 지역과 업종에 딱 맞는 지원사업만 선별해 카톡으로 보내드립니다.
-    </p>
-
-    <!-- 카카오 가입 CTA 버튼 -->
-    <div class="max-w-sm mx-auto flex flex-col gap-3">
-      <button onclick="loginWithKakao()" class="w-full bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition flex items-center justify-center gap-3 text-lg">
-        <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24">
-          <path d="M12 3c-4.97 0-9 3.185-9 7.115 0 2.557 1.707 4.8 4.27 6.09-.188.702-.682 2.545-.78 2.94-.122.494.181.487.38.356.157-.103 2.508-1.704 3.522-2.394.526.077 1.063.118 1.608.118 4.97 0 9-3.185 9-7.115S16.97 3 12 3z"/>
-        </svg>
-        카카오로 3초 만에 알림받기
-      </button>
-      <p class="text-xs text-gray-400">⚡ 카드 등록 없이 14일간 무료 체험 가능</p>
+  <!-- Target Customer Section -->
+  <section class="section" style="padding-bottom: 20px;">
+    <h2 class="section-title" style="margin-bottom: 32px;">🎯 이런 대표님께 꼭 필요합니다</h2>
+    <div class="grid-4">
+      <div class="target-card">
+        <div class="target-icon">🚀</div>
+        <div class="target-title">예비 / 초기 창업자</div>
+        <div class="target-desc">사업화 자금, 창업 지원금 정보를 누구보다 빠르게 챙겨야 하는 분</div>
+      </div>
+      <div class="target-card">
+        <div class="target-icon">🏪</div>
+        <div class="target-title">소상공인 / 자영업자</div>
+        <div class="target-desc">지자체 마케팅 지원, 시설 개선 바우처를 놓치고 싶지 않은 분</div>
+      </div>
+      <div class="target-card">
+        <div class="target-icon">🏭</div>
+        <div class="target-title">제조 / 기술기업</div>
+        <div class="target-desc">R&D 지원사업, 스마트공장 구축 자금을 상시 탐색해야 하는 분</div>
+      </div>
+      <div class="target-card">
+        <div class="target-icon">🌐</div>
+        <div class="target-title">수출 / 글로벌 스타트업</div>
+        <div class="target-desc">해외 전시회, 글로벌 개척단 지원사업을 실시간 모니터링할 분</div>
+      </div>
     </div>
   </section>
 
-  <!-- 3. 핵심 기능 소개 (3개 카드로 구성) -->
-  <section class="bg-white py-16 border-y border-gray-200">
-    <div class="max-w-5xl mx-auto px-6">
-      <h2 class="text-2xl sm:text-3xl font-bold text-center text-gray-900 mb-12">
-        비즈맵 알림톡이 대표님의 시간을 아껴드립니다
-      </h2>
+  <!-- Interactive Kakao Simulator Section -->
+  <section id="preview" class="preview-section">
+    <h2 style="font-size: 24px; font-weight: 800; margin-bottom: 12px; color: #0f172a;">📱 직접 클릭해 보세요!<br>내 조건에 맞춰 오는 알림톡</h2>
+    <p style="color: #64748b; margin-bottom: 28px; font-size: 15px;">아래 버튼을 누르면 관심 조건별 수신 알림 예시가 바뀝니다.</p>
+    
+    <div class="filter-buttons">
+      <button class="filter-btn active" onclick="setFilter('all', this)">⚡ 전체 보기</button>
+      <button class="filter-btn" onclick="setFilter('busan', this)">🌊 부산 / 소상공인</button>
+      <button class="filter-btn" onclick="setFilter('gyeonggi', this)">🏢 경기 / 수출·판로</button>
+      <button class="filter-btn" onclick="setFilter('rnd', this)">🔬 전국 / R&D 자금</button>
+    </div>
 
-      <div class="grid md:grid-cols-3 gap-8">
-        <!-- 카드 1 -->
-        <div class="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-          <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center text-2xl font-bold mb-4">🎯</div>
-          <h3 class="text-lg font-bold text-gray-900 mb-2">맞춤 키워드 필터링</h3>
-          <p class="text-sm text-gray-600 leading-relaxed">
-            부산, 소상공인, 마케팅, IT 등 내 사업장에 필요한 정밀 키워드만 지정하여 수신합니다.
-          </p>
+    <div class="phone-mockup">
+      <div class="chat-header">
+        <div class="chat-profile-img">비즈</div>
+        <div class="chat-profile-name">비즈맵 (Bizmap)</div>
+      </div>
+      
+      <div id="chat-container"></div>
+    </div>
+  </section>
+
+  <!-- Problem Section -->
+  <section class="section">
+    <h2 class="section-title">대표님,<br>혹시 이런 경험 없으신가요?</h2>
+    <div class="grid-3">
+      <div class="card-problem">
+        <div class="icon">😭</div>
+        <h3>"마감 직전에 알았어요"</h3>
+        <p>신청 서류 준비도 못 했는데 오늘 마감인 억대 R&D 지원 공고를 뒤늦게 발견했을 때</p>
+      </div>
+      <div class="card-problem">
+        <div class="icon">💸</div>
+        <h3>"사이트가 너무 많아요"</h3>
+        <p>K-Startup, 테크노파크, 경제진흥원... 매일 십수 개 사이트를 복잡하게 뒤질 때</p>
+      </div>
+      <div class="card-problem">
+        <div class="icon">📄</div>
+        <h3>"나한테 맞는 건지..."</h3>
+        <p>글자 가득한 공고문 읽다가 정작 내 지역/업종 지원인지 헷갈려 포기했을 때</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Feature Section -->
+  <section id="features" class="section">
+    <h2 class="section-title">이제 비즈맵이 매일 아침 대신 찾아드립니다</h2>
+    <div class="solution-list">
+      <div class="solution-item">
+        <div class="solution-icon">🌐</div>
+        <div class="solution-text">
+          <h4>전국 41개 기관 + K-Startup & 기업마당 완벽 수집</h4>
+          <p>지자체, 테크노파크, 경제진흥원, 중기부 지원사업 공고를 24시간 실시간 모니터링합니다.</p>
         </div>
-
-        <!-- 카드 2 -->
-        <div class="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-          <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center text-2xl font-bold mb-4">💬</div>
-          <h3 class="text-lg font-bold text-gray-900 mb-2">카카오톡 실시간 발송</h3>
-          <p class="text-sm text-gray-600 leading-relaxed">
-            별도 앱 설치 없이 늘 사용하는 카카오톡으로 매일 아침 따끈한 신규 공고를 받아봅니다.
-          </p>
+      </div>
+      <div class="solution-item">
+        <div class="solution-icon">🎯</div>
+        <div class="solution-text">
+          <h4>100% 맞춤 키워드 필터링</h4>
+          <p>내 사업장의 [지역 / 업력 / 관심 분야]에 딱 맞는 지원사업만 쏙 골라 매칭합니다.</p>
         </div>
-
-        <!-- 카드 3 -->
-        <div class="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-          <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center text-2xl font-bold mb-4">⚡</div>
-          <h3 class="text-lg font-bold text-gray-900 mb-2">3초 핵심 요약 리포트</h3>
-          <p class="text-sm text-gray-600 leading-relaxed">
-            수십 페이지 분량의 공고문 대신 지원 대상, 금액, 마감일만 깔끔하게 요약해 드립니다.
-          </p>
+      </div>
+      <div class="solution-item">
+        <div class="solution-icon">💬</div>
+        <div class="solution-text">
+          <h4>카카오톡 1초 원클릭 확인</h4>
+          <p>복잡한 원본 사이트를 일일이 찾을 필요 없이, 카톡 메시지 클릭 한 번으로 상세 공고를 확인하세요.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- 4. 요금 안내 섹션 -->
-  <section class="py-16 max-w-4xl mx-auto px-6 text-center">
-    <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">합리적인 서비스 이용요금</h2>
-    <p class="text-gray-600 mb-10">지원사업 하나만 당첨되어도 1,000배 이상의 가치</p>
-
-    <div class="max-w-md mx-auto bg-white rounded-3xl p-8 border-2 border-blue-600 shadow-xl relative">
-      <span class="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs font-bold px-4 py-1.5 rounded-full">
-        POPULAR PLAN
-      </span>
-      <h3 class="text-xl font-bold text-gray-900 mb-2">월간 정기구독</h3>
-      <div class="my-6">
-        <span class="text-4xl font-extrabold text-gray-900">3,900원</span>
-        <span class="text-gray-500 text-sm"> / 월</span>
+  <!-- Pricing Section -->
+  <section id="pricing" class="section">
+    <h2 class="section-title">커피 한 잔 값으로 지원사업 전담 비서를 두세요</h2>
+    <div class="pricing-container">
+      <div class="price-card">
+        <div class="price-title">월간 구독</div>
+        <div class="price-amount">3,900원 <span>/ 월</span></div>
+        <ul class="price-features">
+          <li>✅ 부담 없는 마이크로 결제</li>
+          <li>✅ 언제든 자유로운 해지 가능</li>
+          <li>✅ 전 지역/업종 키워드 맞춤 알림</li>
+        </ul>
+        <button onclick="loginWithKakao()" class="btn-subscribe">월 구독 신청하기</button>
       </div>
-      <ul class="text-left text-sm text-gray-600 space-y-3 mb-8">
-        <li class="flex items-center gap-2">✔ <span>매일 아침 맞춤 지원사업 카톡 발송</span></li>
-        <li class="flex items-center gap-2">✔ <span>키워드 무제한 수정 지원</span></li>
-        <li class="flex items-center gap-2">✔ <span>언제든 자유롭게 해지 가능</span></li>
-      </ul>
-      <button onclick="loginWithKakao()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition shadow-md">
-        14일 무료로 시작하기
-      </button>
+
+      <div class="price-card best">
+        <span class="price-badge">추천 ⭐ 25% 할인</span>
+        <div class="price-title">연간 구독</div>
+        <div class="price-amount">35,000원 <span>/ 년</span></div>
+        <p style="font-size: 13px; color: #2563eb; font-weight: 700; margin-top: -6px;">(월 2,900원 꼴)</p>
+        <ul class="price-features">
+          <li>✅ 약 25% 가격 할인 혜택</li>
+          <li>✅ 우선 맞춤 알림 발송</li>
+          <li>✅ 전 지역/업종 키워드 맞춤 알림</li>
+        </ul>
+        <button onclick="loginWithKakao()" class="btn-subscribe">연 25% 할인 신청하기</button>
+      </div>
     </div>
   </section>
 
-  <!-- 5. 푸터 -->
-  <footer class="bg-white border-t border-gray-200 py-8 text-center text-xs text-gray-400">
-    <div class="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-      <p>© 2026 비즈맵(Bizmap). All rights reserved.</p>
-      <p>상호명: 아이엠엘케이 | 문의: support@bizmap.co.kr</p>
+  <!-- FAQ Section -->
+  <section id="faq" class="section">
+    <h2 class="section-title">❓ 자주 묻는 질문 (FAQ)</h2>
+    <div class="faq-list">
+      <div class="faq-item">
+        <div class="faq-q"><span>Q.</span> 결제 후 내 사업장 정보(지역, 업종)를 변경할 수 있나요?</div>
+        <div class="faq-a">네, 언제든지 [마이페이지]에서 관심 지역, 업력, 관심 분야 키워드를 자유롭게 수정하실 수 있으며, 변경 즉시 다음 알림부터 변경된 조건으로 맞춤 적용됩니다.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q"><span>Q.</span> 저와 상관없는 알림이 너무 많이 오진 않을까요?</div>
+        <div class="faq-a">걱정마세요! 선택하신 지역 및 관심 분야와 일치하지 않는 공고는 비즈맵 매칭 엔진이 미리 필터링하여 걸러냅니다. 대표님께 꼭 필요한 진짜 공고만 정밀 발송됩니다.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q"><span>Q.</span> 구독을 해지하고 싶을 땐 어떻게 하나요?</div>
+        <div class="faq-a">복잡한 응대 과정 없이 [마이페이지 > 구독 관리]에서 클릭 한 번으로 위약금 없이 언제든지 즉시 해지하실 수 있습니다.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q"><span>Q.</span> 알림톡은 하루에 몇 번 정도 날아오나요?</div>
+        <div class="faq-a">신규 지원사업 공고가 등록되는 매일 정해진 시간(오전)에 맞춰 발송됩니다. 조건에 일치하는 신규 공고가 없는 날에는 무분별한 스팸 메시지가 발송되지 않습니다.</div>
+      </div>
     </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-links">
+      <a onclick="openModal('terms-modal')">이용약관</a> | 
+      <a onclick="openModal('privacy-modal')">개인정보처리방침</a>
+    </div>
+
+    <div class="footer-info">
+      <p><b>아이엠엘케이</b> | 대표자 : 김성현</p>
+      <p>소재지 : 부산광역시 부산진구 전포대로275번길 65 7층 705호</p>
+      <p>사업자 등록번호 : 498-53-00090 | 통신판매신고번호 : 2019-부산부산진-0583호</p>
+      <p>개인정보관리책임자 : 김성현 | 호스팅제공자 : 아이엠엘케이</p>
+      <p>대표번호 : 010-8468-7138 | 문의 : bizmaps01@naver.com</p>
+    </div>
+
+    <p style="font-size: 12px; color: #64748b;">Copyright © 아이엠엘케이 (Bizmap). All rights reserved.</p>
   </footer>
 
-  <!-- 6. 키워드 설정 모달 (카카오 로그인 성공 시 팝업) -->
-  <div id="keyword-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full text-left shadow-2xl">
-      <h3 class="text-xl font-bold text-gray-900 mb-2">🎯 맞춤 키워드 설정</h3>
-      <p class="text-sm text-gray-600 mb-6">받아보실 사업장의 지역이나 분야를 쉼표(,)로 구분해서 적어주세요.</p>
-      
-      <div class="mb-6">
-        <label class="block text-xs font-bold text-gray-700 mb-2">희망 키워드</label>
-        <input type="text" id="user-keywords" placeholder="예: 부산, 소상공인, 마케팅, IT" class="w-full border border-gray-300 rounded-xl p-3.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+  <!-- Modal: Keyword Setup (로그인 후 키워드 입력) -->
+  <div id="keyword-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 480px;">
+      <button class="modal-close" onclick="closeModal('keyword-modal')">✕</button>
+      <div class="modal-title">🎯 맞춤 키워드 설정</div>
+      <div class="modal-body">
+        <p style="margin-bottom: 16px; color: #475569;">알림을 받으실 사업장 지역이나 관심 분야를 쉼표(,)로 구분해서 입력해 주세요.</p>
+        <input type="text" id="user-keywords" placeholder="예: 부산, 소상공인, 마케팅, IT" style="width: 100%; padding: 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; margin-bottom: 20px; outline: none;">
+        <button onclick="saveUserInfo()" style="width: 100%; background: #2563eb; color: white; padding: 14px; border: none; border-radius: 10px; font-weight: 800; font-size: 15px; cursor: pointer;">
+          완료하고 카톡 알림 신청하기
+        </button>
       </div>
-      
-      <button onclick="saveUserInfo()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition shadow-md">
-        완료하고 카톡 알림 신청하기
-      </button>
     </div>
   </div>
 
-  <!-- JavaScript 연동 로직 -->
+  <!-- Modal: Terms of Service -->
+  <div id="terms-modal" class="modal-overlay">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeModal('terms-modal')">✕</button>
+      <div class="modal-title">이용약관</div>
+      <div class="modal-body">
+        <h3>제1조 (목적)</h3>
+        <p>본 이용약관은 "비즈맵(Bizmap) 지원사업 알림서비스"(이하 "사이트")의 서비스 이용조건과 운영에 관한 제반 사항 규정을 목적으로 합니다.</p>
+
+        <h3>제2조 (용어의 정의)</h3>
+        <p>① 회원 : 사이트의 약관에 동의하고 개인정보를 제공하여 회원등록을 한 자로서, 사이트와의 이용계약을 체결하고 사이트를 이용하는 이용자를 말합니다.<br>
+        ② 이용계약 : 사이트 이용과 관련하여 사이트와 회원 간에 체결하는 계약을 말합니다.<br>
+        ③ 운영자 : 서비스를 개설하여 운영하는 아이엠엘케이(이하 "회사")를 말합니다.</p>
+
+        <h3>제3조 (약관 외 준칙)</h3>
+        <p>운영자는 필요한 경우 별도로 운영정책을 공지 안내할 수 있으며, 본 약관과 운영정책이 중첩될 경우 운영정책이 우선 적용됩니다.</p>
+
+        <h3>제4조 (이용계약 체결)</h3>
+        <p>이용계약은 회원으로 등록하여 사이트를 이용하려는 자의 본 약관 내용에 대한 동의와 가입신청에 대하여 운영자의 이용승낙으로 성립합니다.</p>
+
+        <h3>제5조 (서비스 이용 신청 및 제한)</h3>
+        <p>회원은 타인의 정보를 도용하거나 허위의 정보를 등록해서는 안 되며, 본 서비스는 정부지원사업 선정 결과를 보장하지 않습니다.<br>
+        회사는 다음의 경우에 대하여 책임을 지지 않습니다.<br>
+        - 정부 정책 변경에 따른 결과 변동<br>
+        - 공고 조건 변경<br>
+        - 평가기관 판단에 따른 결과 변화</p>
+
+        <h3>제6조 (서비스 이용 시간 및 해지)</h3>
+        <p>서비스 이용은 연중무휴 1일 24시간을 원칙으로 하며, 회원이 이용계약을 해지하고자 하는 경우에는 마이페이지 등 제공되는 메뉴를 통해 해지 신청을 할 수 있습니다.</p>
+
+        <h3>제7조 (환불 정책)</h3>
+        <p>① 서비스 이용 전 환불 : 결제 후 알림 및 분석 서비스가 시작되기 전까지는 100% 환불 가능합니다. (단순 변심의 경우 결제 후 24시간 이내 요청 시)<br>
+        ② 서비스 이용 중 환불 : 정기 구독 서비스 특성상 이미 제공된 기간에 해당하는 금액을 차감 후 잔여 기간에 대해 환불 산정합니다.<br>
+        ③ 결과 제공 이후 : 서비스가 정상 제공된 이후에는 환불이 불가하나, 회사의 명백한 시스템 오류로 서비스가 누락된 경우에는 재제공 또는 환불 처리됩니다.</p>
+
+        <p style="margin-top:20px; font-weight:700;">부칙 : 이 약관은 2026년 5월 1일부터 시행합니다.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Privacy Policy -->
+  <div id="privacy-modal" class="modal-overlay">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeModal('privacy-modal')">✕</button>
+      <div class="modal-title">개인정보처리방침</div>
+      <div class="modal-body">
+        <p>아이엠엘케이(이하 ‘회사’라 한다)는 개인정보 보호법 제30조에 따라 정보 주체의 개인정보를 보호하고 이와 관련한 고충을 신속하고 원활하게 처리할 수 있도록 하기 위하여 다음과 같이 개인정보 처리지침을 수립, 공개합니다.</p>
+
+        <h3>제1조 (개인정보의 처리목적)</h3>
+        <p>회사는 홈페이지 회원 가입 및 관리, 재화 또는 서비스 제공(지원사업 맞춤 알림톡 발송), 고충 처리 등을 목적으로 개인정보를 처리합니다. (카카오, 네이버 소셜 로그인 포함)</p>
+
+        <h3>제2조 (개인정보의 처리 및 보유기간)</h3>
+        <p>회원 탈퇴 시까지 보유하며, 관계 법령(전자상거래법 등)에 따른 거래 기록 보존 의무가 있는 경우 해당 법정 기간 동안 안전하게 보관합니다.<br>
+        - 계약 또는 청약철회, 대금결제 기록 : 5년<br>
+        - 소비자 불만 또는 분쟁 처리 기록 : 3년</p>
+
+        <h3>제3조 (개인정보처리의 위탁)</h3>
+        <p>회사는 원활한 서비스 제공을 위해 아래와 같이 개인정보 처리업무를 위탁하고 있습니다.<br>
+        - 호스팅 및 메시지 발송 : (주)아임웹, 루나소프트, 인포빕<br>
+        - 결제 처리 : KG이니시스, (주)카카오페이, (주)토스페이먼츠<br>
+        - 소셜 로그인 : 카카오(주), 네이버(주)</p>
+
+        <h3>제4조 (처리하는 개인정보 항목)</h3>
+        <p>필수항목 : 성명, 이메일주소, 전화번호, 결제정보, 관심지역/업종 키워드<br>
+        자동 수집항목 : IP주소, 쿠키, 서비스 이용기록, 기기정보</p>
+
+        <h3>제5조 (개인정보 보호책임자)</h3>
+        <p>성명 : 김성현 (대표)<br>
+        연락처 : 010-8468-7138 | 이메일 : bizmaps01@naver.com</p>
+
+        <p style="margin-top:20px; font-weight:700;">시행일자 : 2026년 5월 1일</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Logic -->
   <script>
-    // Supabase 및 Kakao 발급 키 세팅
+    /* 1. Supabase & Kakao SDK 설정 */
     const SUPABASE_URL = 'https://hcyvfgeaquydsvtrcnrv.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_P19tdkj74ibIy7Xdle2i4w_M1B1mhV_';
     const KAKAO_JS_KEY = '9bd12d1c0e5ec843cafec8513fc92cc8';
 
-    // SDK 초기화
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     if (!Kakao.isInitialized()) {
       Kakao.init(KAKAO_JS_KEY);
@@ -164,7 +444,7 @@
 
     let currentKakaoUser = null;
 
-    // 카카오 로그인 함수
+    /* 2. 카카오 로그인 실행 함수 */
     function loginWithKakao() {
       Kakao.Auth.login({
         success: function(authObj) {
@@ -172,7 +452,7 @@
             url: '/v2/user/me',
             success: function(res) {
               currentKakaoUser = res;
-              document.getElementById('keyword-modal').classList.remove('hidden');
+              openModal('keyword-modal');
             },
             fail: function(error) {
               alert('카카오 회원 정보를 불러오지 못했습니다.');
@@ -185,7 +465,7 @@
       });
     }
 
-    // Supabase DB 저장 함수
+    /* 3. Supabase DB 사용자 저장 함수 */
     async function saveUserInfo() {
       const keywordsInput = document.getElementById('user-keywords').value;
       const keywordsList = keywordsInput.split(',').map(k => k.trim()).filter(k => k.length > 0);
@@ -209,10 +489,75 @@
         console.error('DB 저장 에러:', error);
         alert('가입 처리 중 오류가 발생했습니다. (이미 등록된 계정일 수 있습니다)');
       } else {
-        alert(`${name}님, 맞춤 지원사업 알림 신청이 완료되었습니다!`);
-        document.getElementById('keyword-modal').classList.add('hidden');
+        alert(`${name}님, 맞춤 지원사업 알림 신청이 완벽하게 완료되었습니다!`);
+        closeModal('keyword-modal');
       }
     }
+
+    /* 4. 시뮬레이터 데이터 및 렌더링 */
+    const mockData = {
+      all: [
+        { org: '성남산업진흥원', region: '경기 / 판로·해외진출', title: '2026년 성남시 폴란드 방산 시장개척단 참가기업 모집', date: '~ 2026.08.18 까지', kw: '[경기 / 판로]' },
+        { org: '부산경제진흥원', region: '부산 / 소상공인 마케팅', title: '2026년 부산 소상공인 브랜드 마케팅 바우처 지원사업', date: '~ 2026.08.25 까지', kw: '[부산 / 소상공인]' }
+      ],
+      busan: [
+        { org: '부산경제진흥원', region: '부산 / 소상공인 마케팅', title: '2026년 부산 소상공인 브랜드 마케팅 바우처 지원사업', date: '~ 2026.08.25 까지', kw: '[부산 / 소상공인]' },
+        { org: '부산테크노파크', region: '부산 / 시설·자금', title: '2026년 부산 지역주도형 청년일자리 및 시설개선 지원', date: '~ 2026.08.30 까지', kw: '[부산 / 자금]' }
+      ],
+      gyeonggi: [
+        { org: '성남산업진흥원', region: '경기 / 판로·해외진출', title: '2026년 성남시 폴란드 방산 시장개척단 참가기업 모집', date: '~ 2026.08.18 까지', kw: '[경기 / 판로]' },
+        { org: '경기도경제과학진흥원', region: '경기 / 글로벌 수출', title: '2026년 경기도 수출기업 온라인 해외 마케팅 지원공고', date: '~ 2026.08.22 까지', kw: '[경기 / 수출]' }
+      ],
+      rnd: [
+        { org: '중소벤처기업부', region: '전국 / R&D 기술개발', title: '2026년 디딤돌 첫걸음 R&D 연구개발과제 주관기관 모집', date: '~ 2026.08.28 까지', kw: '[전국 / R&D]' },
+        { org: '한국산업기술진흥원', region: '전국 / 시설·스마트공장', title: '2026년 중소기업 스마트공장 구축 지원사업 2차 공고', date: '~ 2026.09.05 까지', kw: '[전국 / 제조]' }
+      ]
+    };
+
+    function renderChats(type) {
+      const container = document.getElementById('chat-container');
+      const items = mockData[type] || mockData.all;
+      container.innerHTML = items.map(item => `
+        <div class="chat-bubble">
+          <span class="chat-tag">알림톡</span>
+          <div class="chat-title">📢 [비즈맵] 신규 지원사업 알림</div>
+          <div class="chat-info-list">
+            • <b>발행기관:</b> ${item.org}<br>
+            • <b>지역/분류:</b> ${item.region}<br>
+            • <b>공고 제목:</b> ${item.title}<br>
+            • <b>신청 기한:</b> ${item.date}
+          </div>
+          <p style="font-size: 11px; color: #64748b; margin-bottom: 4px;">* 선택 키워드 ${item.kw} 조건 매칭 공고입니다.</p>
+          <a href="javascript:void(0);" onclick="loginWithKakao();" class="chat-btn">🔗 공고 상세내용 원클릭 확인하기</a>
+        </div>
+      `).join('');
+    }
+
+    function setFilter(type, btn) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderChats(type);
+    }
+
+    /* 5. Modal Controls */
+    function openModal(id) {
+      document.getElementById(id).style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).style.display = 'none';
+      document.body.style.overflow = 'auto';
+    }
+
+    window.onclick = function(event) {
+      if (event.target.classList.contains('modal-overlay')) {
+        event.target.style.display = 'none';
+        document.body.style.overflow = 'auto';
+      }
+    };
+
+    renderChats('all');
   </script>
 </body>
 </html>
