@@ -1,0 +1,31 @@
+name: Bizmap Notice Daily Crawler
+
+on:
+  schedule:
+    # 💡 한국 시간(KST) 매일 아침 09:00 정각 자동 실행
+    - cron: '0 0 * * *'
+  workflow_dispatch: # 💡 깃허브 웹사이트에서 수동 즉시 실행도 가능
+
+jobs:
+  run-crawler:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 1. 코드 체크아웃
+      uses: actions/checkout@v3
+
+    - name: 2. 파이썬 3.11 환경 세팅
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: 3. 모듈 및 Playwright 패키지 설치
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests pandas curl_cffi beautifulsoup4 openpyxl supabase playwright
+        playwright install chromium
+        playwright install-deps
+
+    - name: 4. 매일 아침 크롤러 및 알림톡/문자 발송 실행
+      run: |
+        python main.py
