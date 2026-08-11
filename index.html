@@ -523,12 +523,13 @@
           <p style="font-size: 11px; color: #b45309; margin-top: 4px;">* 카카오 알림톡 수신에 사용됩니다.</p>
         </div>
 
+        <!-- 💡 기본값: '전국' 설정 -->
         <div class="form-group">
           <label class="form-label">📍 사업장 주요 지역 (시/도 선택)</label>
           <select id="onboarding-region" class="select-input" onchange="updateLiveMatchPreview('onboarding')">
-            <option value="전국">전국 (지역 제한 없음)</option>
+            <option value="전국" selected>전국 (지역 제한 없음)</option>
             <option value="서울특별시">서울특별시</option>
-            <option value="부산광역시" selected>부산광역시</option>
+            <option value="부산광역시">부산광역시</option>
             <option value="대구광역시">대구광역시</option>
             <option value="인천광역시">인천광역시</option>
             <option value="광주광역시">광주광역시</option>
@@ -557,9 +558,10 @@
           </div>
         </div>
 
+        <!-- 💡 기본값 제거: 깨끗한 빈칸 노출 -->
         <div class="form-group">
           <label class="form-label">🔍 세부 관심 분야 (선택 입력)</label>
-          <input type="text" id="onboarding-detail-kw" placeholder="예: 마케팅, R&D, 바우처, 시설개선" class="text-input" value="마케팅, 바우처" oninput="updateLiveMatchPreview('onboarding')">
+          <input type="text" id="onboarding-detail-kw" placeholder="예: 마케팅, R&D, 바우처, 시설개선" class="text-input" value="" oninput="updateLiveMatchPreview('onboarding')">
         </div>
 
         <div class="live-preview-box">
@@ -1130,11 +1132,17 @@
       showEmailLoginFormView();
     }
 
+    /* 💡 가입 모달 오픈 시 폼 리셋 (기본 선택: '전국', 세부분야: 빈칸) */
     async function checkUserOnboard(userRes) {
+      id('onboarding-region').value = '전국';
+      id('onboarding-detail-kw').value = '';
+
       if (authProviderType !== 'kakao') {
         document.getElementById('phone-input-group').style.display = 'block';
         if (userRes.phone) {
           document.getElementById('user-phone-number').value = userRes.phone;
+        } else {
+          document.getElementById('user-phone-number').value = '';
         }
       } else {
         document.getElementById('phone-input-group').style.display = 'none';
@@ -1246,7 +1254,6 @@
       updateUIOnLogin();
     }
 
-    /* 💡 마이페이지 오픈 (전화번호 스마트 필터링 적용) */
     async function openMyPage() {
       if (!currentKakaoUser) {
         openLoginOptionsModal();
@@ -1276,7 +1283,7 @@
       if (data && data.keywords) {
         const rawKwList = Array.isArray(data.keywords) ? data.keywords : data.keywords.split(',').map(k => k.trim());
         
-        let foundRegion = "부산광역시";
+        let foundRegion = "전국";
         let foundCategory = "소상공인";
         let detailKwList = [];
 
@@ -1289,7 +1296,7 @@
           } else if (normCat) {
             foundCategory = normCat;
           } else if (k.includes('📱') || /^\d{9,11}$/.test(k.replace(/[^0-9]/g, ''))) {
-            // 💡 전화번호 데이터는 세부 관심 분야 입력창에서 깔끔하게 걸러냄!
+            // 전화번호 데이터 스킵
           } else {
             if (k && k.length > 0) detailKwList.push(k);
           }
@@ -1339,7 +1346,6 @@
       const email = currentKakaoUser.kakao_account?.email || `user_${currentKakaoUser.id}@bizmap.local`;
       const name = currentKakaoUser.properties?.nickname || '사용자';
 
-      // 💡 기존 DB에서 저장되어 있던 전화번호 정보 유지
       const { data: userData } = await supabaseClient
         .from('users')
         .select('keywords')
