@@ -478,12 +478,14 @@
       <button class="modal-close" onclick="closeModal('mypage-modal')">✕</button>
       <div class="modal-title">👤 내 알림 설정 (마이페이지)</div>
       <div class="modal-body">
+        
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin-bottom: 18px; font-size: 14px;">
           <p><b>회원명:</b> <span id="mypage-user-name">불러오는 중...</span></p>
+          <p style="margin-top: 4px;"><b>로그인 계정:</b> <span id="mypage-user-email" style="color: #2563eb; font-weight: 700;">불러오는 중...</span></p>
+          <p style="margin-top: 4px;"><b>로그인 수단:</b> <span id="mypage-user-provider" style="background: #eff6ff; color: #1d4ed8; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">불러오는 중...</span></p>
           <p style="margin-top: 4px;"><b>알림 상태:</b> <span style="background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">카톡 알림 가동 중</span></p>
         </div>
 
-        <!-- 1차 지역 선택 드롭다운 -->
         <div class="form-group">
           <label class="form-label">📍 사업장 주요 지역 (시/도)</label>
           <select id="mypage-region" class="select-input">
@@ -508,7 +510,6 @@
           </select>
         </div>
 
-        <!-- 기업 형태 칩 버튼 -->
         <div class="form-group">
           <label class="form-label">🏢 기업 형태 / 업력 구분</label>
           <div class="chip-group" id="mypage-category-chips">
@@ -519,7 +520,6 @@
           </div>
         </div>
 
-        <!-- 세부 키워드 입력 -->
         <div class="form-group">
           <label class="form-label">🎯 세부 관심 분야 키워드</label>
           <p style="font-size: 11.5px; color: #64748b; margin-bottom: 6px;">쉼표(,)로 구분해 수정해 주세요.</p>
@@ -544,6 +544,10 @@
           <button onclick="logoutWithKakao()" style="background: #fff; color: #ef4444; border: 1px solid #fca5a5; padding: 12px 14px; border-radius: 10px; font-weight: 700; cursor: pointer;">로그아웃</button>
           <button onclick="closeModal('mypage-modal')" style="flex: 1; background: #f1f5f9; color: #475569; padding: 12px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer;">취소</button>
           <button onclick="saveMyPageInfo()" style="flex: 2; background: #2563eb; color: white; padding: 12px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer;">설정 저장하기</button>
+        </div>
+
+        <div style="text-align: right; margin-top: 14px;">
+          <a onclick="deleteAccount()" style="font-size: 12px; color: #94a3b8; text-decoration: underline; cursor: pointer;">회원 탈퇴하기</a>
         </div>
       </div>
     </div>
@@ -597,7 +601,6 @@
 
     function id(elemId) { return document.getElementById(elemId); }
 
-    /* 문자열 지능형 지역 정규화 함수 */
     function normalizeRegion(str) {
       if (!str) return null;
       for (let key in regionMap) {
@@ -606,7 +609,6 @@
       return null;
     }
 
-    /* 문자열 지능형 기업형태 정규화 함수 */
     function normalizeCategory(str) {
       if (!str) return null;
       if (str.includes("소상공인") || str.includes("자영업")) return "소상공인";
@@ -646,11 +648,10 @@
       }
     }
 
-    /* 로그아웃 시 전역 유저 객체 완벽 초기화 */
     function logoutWithKakao() {
       currentKakaoUser = null;
       authProviderType = 'kakao';
-      if (Kakao.Auth && Kakao.Auth.getAccessToken()) {
+      if (window.Kakao && Kakao.Auth && Kakao.Auth.getAccessToken()) {
         Kakao.Auth.logout(function() {
           updateUIOnLogout();
           closeModal('mypage-modal');
@@ -663,7 +664,6 @@
       }
     }
 
-    /* 카카오 로그인 진입 시 기존 객체 강제 초기화 */
     function loginWithKakao() {
       currentKakaoUser = null;
       authProviderType = 'kakao';
@@ -684,7 +684,6 @@
       });
     }
 
-    /* 구글 로그인 진입 시 기존 객체 강제 초기화 */
     function loginWithGoogle() {
       currentKakaoUser = null;
       authProviderType = 'google';
@@ -703,7 +702,6 @@
       document.getElementById('email-form-area').style.display = 'block';
     }
 
-    /* 이메일 로그인 진입 시 기존 객체 강제 초기화 */
     function loginWithEmail() {
       const email = document.getElementById('input-email-val').value.trim();
       if (!email || !email.includes('@')) {
@@ -772,46 +770,64 @@
       `;
     }
 
+    /* 스마트 Upsert 및 100% 결제 모달 오픈 처리 */
     async function saveUserInfoAndGoPay() {
       if (!currentKakaoUser) {
         alert('로그인 정보가 없습니다.');
         return;
       }
 
+      let phoneVal = '';
+      if (authProviderType !== 'kakao') {
+        phoneVal = document.getElementById('user-phone-number').value.trim();
+        if (!phoneVal) {
+          alert('카카오톡 알림톡 수신을 위해 휴대폰 번호를 입력해 주세요.');
+          document.getElementById('user-phone-number').focus();
+          return;
+        }
+      }
+
       const region = document.getElementById('onboarding-region').value;
       const detailKw = document.getElementById('onboarding-detail-kw').value.trim();
-      const combinedKeywords = [region, onboardingCategory, ...detailKw.split(',').map(k => k.trim())].filter(k => k.length > 0);
+      
+      let combinedKeywords = [region, onboardingCategory];
+      if (phoneVal) {
+        combinedKeywords.push(`📱 ${phoneVal}`);
+      }
+      if (detailKw) {
+        detailKw.split(',').forEach(k => {
+          if (k.trim()) combinedKeywords.push(k.trim());
+        });
+      }
 
       const email = currentKakaoUser.kakao_account?.email || `user_${currentKakaoUser.id}@bizmap.local`;
       const name = currentKakaoUser.properties?.nickname || '사용자';
 
-      const { data: existingUser } = await supabaseClient
+      const userPayload = {
+        email: email,
+        name: name,
+        keywords: combinedKeywords,
+        provider: authProviderType,
+        subscription_status: 'active'
+      };
+
+      // Supabase Upsert 처리
+      let { error: dbError } = await supabaseClient
         .from('users')
-        .select('email')
-        .eq('email', email)
-        .maybeSingle();
-
-      let dbError = null;
-
-      if (existingUser) {
-        const { error } = await supabaseClient
-          .from('users')
-          .update({ name: name, keywords: combinedKeywords, provider: authProviderType, subscription_status: 'active' })
-          .eq('email', email);
-        dbError = error;
-      } else {
-        const { error } = await supabaseClient
-          .from('users')
-          .insert([{ email: email, name: name, keywords: combinedKeywords, provider: authProviderType, subscription_status: 'active' }]);
-        dbError = error;
-      }
+        .upsert(userPayload, { onConflict: 'email' });
 
       if (dbError) {
-        alert('저장 중 오류 발생: ' + dbError.message);
-      } else {
-        closeModal('keyword-modal');
-        openModal('payment-modal');
+        console.warn('Upsert fallback triggered:', dbError);
+        const { data: exist } = await supabaseClient.from('users').select('email').eq('email', email).maybeSingle();
+        if (exist) {
+          await supabaseClient.from('users').update(userPayload).eq('email', email);
+        } else {
+          await supabaseClient.from('users').insert([userPayload]);
+        }
       }
+
+      closeModal('keyword-modal');
+      openModal('payment-modal'); // 💳 100% 결제 모달 열기!
     }
 
     function executePay(planType) {
@@ -821,7 +837,6 @@
       updateUIOnLogin();
     }
 
-    /* 마이페이지 열기 및 DB 데이터 파싱 지능형 복원 */
     async function openMyPage() {
       if (!currentKakaoUser) {
         openLoginOptionsModal();
@@ -831,7 +846,13 @@
       const email = currentKakaoUser.kakao_account?.email || `user_${currentKakaoUser.id}@bizmap.local`;
       const name = currentKakaoUser.properties?.nickname || '사용자';
 
+      let providerLabel = '💬 카카오톡 소셜 로그인';
+      if (authProviderType === 'google') providerLabel = '🌐 구글 계정 로그인';
+      if (authProviderType === 'email') providerLabel = '✉️ 일반 이메일 로그인';
+
       document.getElementById('mypage-user-name').innerText = name;
+      document.getElementById('mypage-user-email').innerText = email;
+      document.getElementById('mypage-user-provider').innerText = providerLabel;
       document.getElementById('mypage-msg').innerText = '';
 
       openModal('mypage-modal');
@@ -927,6 +948,27 @@
         msgDiv.style.color = '#16a34a';
         msgDiv.innerText = '✅ 설정이 성공적으로 저장되었습니다!';
         setTimeout(() => { closeModal('mypage-modal'); }, 1000);
+      }
+    }
+
+    async function deleteAccount() {
+      if (!currentKakaoUser) return;
+
+      const confirmDelete = confirm('정말로 비즈맵 서비스를 탈퇴하시겠습니까?\n\n탈퇴 시 등록된 맞춤 키워드 및 카톡 알림 설정 정보가 모두 즉시 삭제됩니다.');
+      if (!confirmDelete) return;
+
+      const email = currentKakaoUser.kakao_account?.email || `user_${currentKakaoUser.id}@bizmap.local`;
+
+      const { error } = await supabaseClient
+        .from('users')
+        .delete()
+        .eq('email', email);
+
+      if (error) {
+        alert('탈퇴 처리 중 오류가 발생했습니다: ' + error.message);
+      } else {
+        alert('회원 탈퇴가 성공적으로 완료되었습니다.\n그동안 비즈맵을 이용해 주셔서 감사합니다.');
+        logoutWithKakao();
       }
     }
 
