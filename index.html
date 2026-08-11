@@ -394,22 +394,22 @@
         
         <div class="form-group">
           <label class="form-label">이름 (대표자명)</label>
-          <input type="text" id="signup-name-val" placeholder="홍길동" class="text-input">
+          <input type="text" id="signup-name-val" placeholder="홍길동" class="text-input" autocomplete="off">
         </div>
 
         <div class="form-group">
           <label class="form-label">휴대폰 번호 (알림톡 수신용)</label>
-          <input type="tel" id="signup-phone-val" placeholder="01012345678 (- 없이 입력)" class="text-input">
+          <input type="tel" id="signup-phone-val" placeholder="01012345678 (- 없이 입력)" class="text-input" autocomplete="off">
         </div>
 
         <div class="form-group">
           <label class="form-label">이메일 주소</label>
-          <input type="email" id="signup-email-val" placeholder="example@naver.com" class="text-input">
+          <input type="email" id="signup-email-val" placeholder="example@naver.com" class="text-input" autocomplete="off">
         </div>
 
         <div class="form-group">
           <label class="form-label">비밀번호</label>
-          <input type="password" id="signup-pass-val" placeholder="비밀번호 입력" class="text-input">
+          <input type="password" id="signup-pass-val" placeholder="비밀번호 입력" class="text-input" autocomplete="new-password">
         </div>
 
         <div class="agreement-box">
@@ -446,12 +446,12 @@
         
         <div class="form-group">
           <label class="form-label">이메일 주소</label>
-          <input type="email" id="login-email-val" placeholder="example@naver.com" class="text-input">
+          <input type="email" id="login-email-val" placeholder="example@naver.com" class="text-input" autocomplete="off">
         </div>
 
         <div class="form-group">
           <label class="form-label">비밀번호</label>
-          <input type="password" id="login-pass-val" placeholder="비밀번호 입력" class="text-input">
+          <input type="password" id="login-pass-val" placeholder="비밀번호 입력" class="text-input" autocomplete="current-password">
         </div>
 
         <button onclick="loginWithEmailLogin()" style="width: 100%; background: #2563eb; color: white; padding: 14px; border: none; border-radius: 12px; font-weight: 800; font-size: 15px; cursor: pointer; margin-top: 8px;">
@@ -475,11 +475,11 @@
         <div id="find-id-area">
           <div class="form-group">
             <label class="form-label">이름 (대표자명)</label>
-            <input type="text" id="find-id-name" placeholder="홍길동" class="text-input">
+            <input type="text" id="find-id-name" placeholder="홍길동" class="text-input" autocomplete="off">
           </div>
           <div class="form-group">
             <label class="form-label">가입 시 입력한 휴대폰 번호</label>
-            <input type="tel" id="find-id-phone" placeholder="01012345678 (- 없이 입력)" class="text-input">
+            <input type="tel" id="find-id-phone" placeholder="01012345678 (- 없이 입력)" class="text-input" autocomplete="off">
           </div>
           <button onclick="findUserEmail()" style="width: 100%; background: #2563eb; color: white; padding: 13px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; margin-top: 6px;">
             이메일 아이디 찾기 🔍
@@ -490,11 +490,11 @@
         <div id="find-pw-area" style="display: none;">
           <div class="form-group">
             <label class="form-label">가입 이메일 주소</label>
-            <input type="email" id="find-pw-email" placeholder="example@naver.com" class="text-input">
+            <input type="email" id="find-pw-email" placeholder="example@naver.com" class="text-input" autocomplete="off">
           </div>
           <div class="form-group">
             <label class="form-label">가입 휴대폰 번호</label>
-            <input type="tel" id="find-pw-phone" placeholder="01012345678 (- 없이 입력)" class="text-input">
+            <input type="tel" id="find-pw-phone" placeholder="01012345678 (- 없이 입력)" class="text-input" autocomplete="off">
           </div>
           <button onclick="resetUserPassword()" style="width: 100%; background: #0f172a; color: white; padding: 13px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; margin-top: 6px;">
             본인 확인 후 비밀번호 재설정 🔑
@@ -519,11 +519,10 @@
         
         <div id="phone-input-group" class="form-group" style="display: none; background: #fffbebfb; border: 1px solid #fcd34d; padding: 12px; border-radius: 10px;">
           <label class="form-label" style="color: #b45309;">📱 카카오톡 수신 휴대폰 번호 (필수)</label>
-          <input type="tel" id="user-phone-number" placeholder="예: 01012345678 (- 없이 입력)" class="text-input">
+          <input type="tel" id="user-phone-number" placeholder="예: 01012345678 (- 없이 입력)" class="text-input" autocomplete="off">
           <p style="font-size: 11px; color: #b45309; margin-top: 4px;">* 카카오 알림톡 수신에 사용됩니다.</p>
         </div>
 
-        <!-- 💡 기본값: '전국' 설정 -->
         <div class="form-group">
           <label class="form-label">📍 사업장 주요 지역 (시/도 선택)</label>
           <select id="onboarding-region" class="select-input" onchange="updateLiveMatchPreview('onboarding')">
@@ -558,10 +557,9 @@
           </div>
         </div>
 
-        <!-- 💡 기본값 제거: 깨끗한 빈칸 노출 -->
         <div class="form-group">
           <label class="form-label">🔍 세부 관심 분야 (선택 입력)</label>
-          <input type="text" id="onboarding-detail-kw" placeholder="예: 마케팅, R&D, 바우처, 시설개선" class="text-input" value="" oninput="updateLiveMatchPreview('onboarding')">
+          <input type="text" id="onboarding-detail-kw" placeholder="예: 마케팅, R&D, 바우처, 시설개선" class="text-input" value="" autocomplete="off" oninput="updateLiveMatchPreview('onboarding')">
         </div>
 
         <div class="live-preview-box">
@@ -841,11 +839,34 @@
       return null;
     }
 
+    /* 💡 모든 폼 입력창 완전 리셋 함수 */
+    function resetAllForms() {
+      const idsToClear = [
+        'signup-name-val', 'signup-phone-val', 'signup-email-val', 'signup-pass-val',
+        'login-email-val', 'login-pass-val', 'user-phone-number', 'onboarding-detail-kw',
+        'find-id-name', 'find-id-phone', 'find-pw-email', 'find-pw-phone'
+      ];
+      idsToClear.forEach(elemId => {
+        const el = id(elemId);
+        if (el) el.value = '';
+      });
+
+      const regionSelect = id('onboarding-region');
+      if (regionSelect) regionSelect.value = '전국';
+
+      onboardingCategory = '소상공인';
+      document.querySelectorAll('#onboarding-category-chips .chip-btn').forEach(b => {
+        if (b.getAttribute('data-cat') === '소상공인') b.classList.add('active');
+        else b.classList.remove('active');
+      });
+    }
+
     function openLoginOptionsModal() {
       if (currentKakaoUser) {
         openMyPage();
         return;
       }
+      resetAllForms();
       showSocialLoginView();
       openModal('login-choice-modal');
     }
@@ -858,6 +879,7 @@
     }
 
     function showEmailSignupView() {
+      resetAllForms();
       id('social-login-view').style.display = 'none';
       id('email-signup-form').style.display = 'block';
       id('email-login-form').style.display = 'none';
@@ -918,6 +940,7 @@
     function logoutWithKakao() {
       currentKakaoUser = null;
       authProviderType = 'kakao';
+      resetAllForms();
       if (window.Kakao && Kakao.Auth && Kakao.Auth.getAccessToken()) {
         Kakao.Auth.logout(function() {
           updateUIOnLogout();
@@ -1132,7 +1155,6 @@
       showEmailLoginFormView();
     }
 
-    /* 💡 가입 모달 오픈 시 폼 리셋 (기본 선택: '전국', 세부분야: 빈칸) */
     async function checkUserOnboard(userRes) {
       id('onboarding-region').value = '전국';
       id('onboarding-detail-kw').value = '';
@@ -1409,6 +1431,8 @@
         alert('탈퇴 처리 중 오류가 발생했습니다: ' + error.message);
         return;
       }
+
+      resetAllForms();
 
       if (authProviderType === 'kakao' && window.Kakao && Kakao.Auth && Kakao.Auth.getAccessToken()) {
         Kakao.API.request({
