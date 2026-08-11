@@ -360,7 +360,7 @@
     <p style="font-size: 12px; color: #64748b;">Copyright © 아이엠엘케이 (Bizmap). All rights reserved.</p>
   </footer>
 
-  <!-- 0. 시작하기 (소셜선택 / 회원가입 / 로그인 / 계정찾기) 모달 -->
+  <!-- 0. 시작하기 모달 -->
   <div id="login-choice-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 460px; text-align: center;">
       <button class="modal-close" onclick="closeModal('login-choice-modal')">✕</button>
@@ -848,7 +848,6 @@
       openModal('login-choice-modal');
     }
 
-    /* 시작하기 모달 내 뷰 전환 함수들 */
     function showSocialLoginView() {
       id('social-login-view').style.display = 'block';
       id('email-signup-form').style.display = 'none';
@@ -964,7 +963,6 @@
       checkUserOnboard(dummyGoogleUser);
     }
 
-    /* 💡 신규 이메일 회원가입 (중복 가입 체크 적용) */
     async function loginWithEmail() {
       const name = id('signup-name-val').value.trim();
       const phone = id('signup-phone-val').value.trim();
@@ -989,7 +987,6 @@
         return;
       }
 
-      // 🚨 중복 가입 체크
       const { data: existingUser } = await supabaseClient
         .from('users')
         .select('email')
@@ -1016,7 +1013,6 @@
       checkUserOnboard(dummyEmailUser);
     }
 
-    /* 💡 이메일 로그인 처리 함수 */
     async function loginWithEmailLogin() {
       const email = id('login-email-val').value.trim();
       const password = id('login-pass-val').value.trim();
@@ -1054,7 +1050,6 @@
       openMyPage();
     }
 
-    /* 💡 아이디(이메일) 찾기 함수 */
     async function findUserEmail() {
       const name = id('find-id-name').value.trim();
       const phone = id('find-id-phone').value.trim();
@@ -1098,7 +1093,6 @@
       return `${maskedName}@${domain}`;
     }
 
-    /* 💡 비밀번호 재설정 함수 */
     async function resetUserPassword() {
       const email = id('find-pw-email').value.trim();
       const phone = id('find-pw-phone').value.trim();
@@ -1252,6 +1246,7 @@
       updateUIOnLogin();
     }
 
+    /* 💡 마이페이지 오픈 (전화번호 스마트 필터링 적용) */
     async function openMyPage() {
       if (!currentKakaoUser) {
         openLoginOptionsModal();
@@ -1293,6 +1288,8 @@
             foundRegion = normReg;
           } else if (normCat) {
             foundCategory = normCat;
+          } else if (k.includes('📱') || /^\d{9,11}$/.test(k.replace(/[^0-9]/g, ''))) {
+            // 💡 전화번호 데이터는 세부 관심 분야 입력창에서 깔끔하게 걸러냄!
           } else {
             if (k && k.length > 0) detailKwList.push(k);
           }
@@ -1339,17 +1336,40 @@
     async function saveMyPageInfo() {
       if (!currentKakaoUser) return;
 
+      const email = currentKakaoUser.kakao_account?.email || `user_${currentKakaoUser.id}@bizmap.local`;
+      const name = currentKakaoUser.properties?.nickname || '사용자';
+
+      // 💡 기존 DB에서 저장되어 있던 전화번호 정보 유지
+      const { data: userData } = await supabaseClient
+        .from('users')
+        .select('keywords')
+        .eq('email', email)
+        .maybeSingle();
+
+      let phoneKw = '';
+      if (userData && userData.keywords) {
+        const existingKw = Array.isArray(userData.keywords) ? userData.keywords : userData.keywords.split(',');
+        const foundPhone = existingKw.find(k => k.includes('📱'));
+        if (foundPhone) phoneKw = foundPhone.trim();
+      }
+
       const region = document.getElementById('mypage-region').value;
       const detailKw = document.getElementById('mypage-detail-kw').value.trim();
-      const combinedKeywords = [region, mypageCategory, ...detailKw.split(',').map(k => k.trim())].filter(k => k.length > 0);
+      
+      let combinedKeywords = [region, mypageCategory];
+      if (phoneKw) combinedKeywords.push(phoneKw);
+
+      if (detailKw) {
+        detailKw.split(',').forEach(k => {
+          if (k.trim()) combinedKeywords.push(k.trim());
+        });
+      }
+
       const isActive = document.getElementById('mypage-active-toggle').checked;
       const msgDiv = document.getElementById('mypage-msg');
 
       msgDiv.style.color = '#2563eb';
       msgDiv.innerText = '저장 중...';
-
-      const email = currentKakaoUser.kakao_account?.email || `user_${currentKakaoUser.id}@bizmap.local`;
-      const name = currentKakaoUser.properties?.nickname || '사용자';
 
       const { error } = await supabaseClient
         .from('users')
