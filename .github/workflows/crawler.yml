@@ -4,7 +4,7 @@ on:
   schedule:
     # 💡 한국 시간(KST) 매일 아침 09:00 정각 자동 실행
     - cron: '0 0 * * *'
-  workflow_dispatch: # 💡 깃허브 웹사이트에서 수동 즉시 실행도 가능
+  workflow_dispatch: # 💡 깃허브 웹사이트에서 수동 즉시 실행 가능
 
 jobs:
   run-crawler:
@@ -12,10 +12,10 @@ jobs:
 
     steps:
     - name: 1. 코드 체크아웃
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: 2. 파이썬 3.11 환경 세팅
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
 
