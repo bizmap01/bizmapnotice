@@ -240,10 +240,43 @@
       }
 
       tbody.innerHTML = users.map(user => {
-        const keywords = Array.isArray(user.keywords) 
-          ? user.keywords.map(k => `<span class="badge-kw">${k}</span>`).join('') 
-          : (user.keywords || '-');
-        
+        let userPhone = '';
+        const pureKeywords = [];
+
+        // 1. 키워드 배열에서 전화번호(📱 또는 숫자)만 분리 추출
+        const rawKeywords = Array.isArray(user.keywords) 
+          ? user.keywords 
+          : (user.keywords ? user.keywords.split(',').map(k => k.trim()) : []);
+
+        rawKeywords.forEach(k => {
+          const cleanK = String(k).trim();
+          if (cleanK.includes('📱') || /^\d{9,11}$/.test(cleanK.replace(/[^0-9]/g, ''))) {
+            userPhone = cleanK.replace('📱', '').trim();
+          } else if (cleanK) {
+            pureKeywords.push(cleanK); // 순수 키워드만 저장
+          }
+        });
+
+        // 2. 전화번호 하이픈(-) 자동 포맷팅 (010-0000-0000)
+        let formattedPhone = userPhone;
+        const digits = userPhone.replace(/[^0-9]/g, '');
+        if (digits.length === 11) {
+          formattedPhone = digits.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
+        } else if (digits.length === 10) {
+          formattedPhone = digits.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+        }
+
+        // 3. 이메일 아래에 전화번호 표시 태그 생성
+        const emailAndPhoneHtml = `
+          <div>${user.email || '이메일 없음'}</div>
+          ${formattedPhone ? `<div style="font-size: 12px; color: #2563eb; font-weight: 700; margin-top: 3px;">📱 ${formattedPhone}</div>` : ''}
+        `;
+
+        // 4. 순수 검색 키워드 칩 태그 생성
+        const keywordsHtml = pureKeywords.length > 0 
+          ? pureKeywords.map(k => `<span class="badge-kw">${k}</span>`).join('') 
+          : '<span style="color: #94a3b8; font-size: 12px;">-</span>';
+
         const isActive = user.subscription_status !== 'inactive';
         const statusBadge = isActive 
           ? '<span class="badge-status badge-active">알림 수신 중</span>' 
@@ -258,9 +291,9 @@
         return `
           <tr>
             <td><b>${user.name || '사용자'}</b></td>
-            <td>${user.email}</td>
+            <td>${emailAndPhoneHtml}</td>
             <td><span class="badge-kw" style="background:#f1f5f9; color:#334155;">${providerBadge}</span></td>
-            <td>${keywords}</td>
+            <td>${keywordsHtml}</td>
             <td>${statusBadge}</td>
             <td>${createdDate}</td>
             <td>
