@@ -140,11 +140,18 @@
     .preview-item-title { font-weight: 700; color: #0f172a; margin-bottom: 2px; }
     .preview-item-sub { color: #64748b; font-size: 11.5px; }
 
-    /* 약관 체크박스 구역 스타일 */
+    /* 약관 체크박스 및 탭 구역 스타일 */
     .agreement-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin: 16px 0; text-align: left; font-size: 13px; }
     .agreement-item { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
     .agreement-item:last-child { margin-bottom: 0; }
     .agreement-label { display: flex; align-items: center; gap: 8px; font-weight: 600; color: #334155; cursor: pointer; }
+
+    .modal-tab-group { display: flex; border-bottom: 2px solid #e2e8f0; margin-bottom: 20px; }
+    .modal-tab-btn { flex: 1; padding: 10px; text-align: center; font-weight: 700; font-size: 14px; color: #64748b; cursor: pointer; border: none; background: none; }
+    .modal-tab-btn.active { color: #2563eb; border-bottom: 2px solid #2563eb; margin-bottom: -2px; }
+
+    .form-link-group { display: flex; justify-content: space-between; margin-top: 14px; font-size: 12.5px; color: #64748b; }
+    .form-link-group a { color: #2563eb; text-decoration: underline; cursor: pointer; font-weight: 600; }
 
     @media (max-width: 768px) {
       header { padding: 14px 20px; }
@@ -353,10 +360,12 @@
     <p style="font-size: 12px; color: #64748b;">Copyright © 아이엠엘케이 (Bizmap). All rights reserved.</p>
   </footer>
 
-  <!-- 0. 💡 카카오 심사 제출용 정식 회원가입 폼을 포함한 시작하기 모달 -->
+  <!-- 0. 시작하기 (소셜선택 / 회원가입 / 로그인 / 계정찾기) 모달 -->
   <div id="login-choice-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 460px; text-align: center;">
       <button class="modal-close" onclick="closeModal('login-choice-modal')">✕</button>
+      
+      <!-- 1) 소셜 및 시작 메인 뷰 -->
       <div id="social-login-view">
         <div class="modal-title" style="border: none; margin-bottom: 8px;">🔑 시작하기</div>
         <p style="font-size: 14px; color: #64748b; margin-bottom: 24px;">원하시는 로그인/가입 방식을 선택해 주세요.</p>
@@ -369,12 +378,16 @@
           🌐 구글 계정으로 시작하기
         </button>
 
-        <button class="social-login-btn btn-email-style" onclick="showEmailFormView()">
-          ✉️ 이메일 회원가입 / 로그인
+        <button class="social-login-btn btn-email-style" onclick="showEmailSignupView()">
+          ✉️ 이메일 회원가입
         </button>
+
+        <div class="form-link-group" style="justify-content: center; margin-top: 18px;">
+          <span>이미 계정이 있으신가요? <a onclick="showEmailLoginFormView()">이메일 로그인</a></span>
+        </div>
       </div>
 
-      <!-- 💡 카카오 심사 제출용 [독립 회원가입 화면] -->
+      <!-- 2) 카카오 심사 제출용 독립 [이메일 회원가입 폼] -->
       <div id="email-signup-form" style="display: none; text-align: left;">
         <div class="modal-title" style="border: none; margin-bottom: 6px;">📝 회원가입</div>
         <p style="font-size: 13px; color: #64748b; margin-bottom: 20px;">맞춤 알림톡 수신을 위한 필수 회원 정보를 입력해 주세요.</p>
@@ -399,7 +412,6 @@
           <input type="password" id="signup-pass-val" placeholder="비밀번호 입력" class="text-input">
         </div>
 
-        <!-- 약관 체크박스 영억 (카카오 필수 요구 항목) -->
         <div class="agreement-box">
           <div class="agreement-item">
             <label class="agreement-label">
@@ -420,7 +432,81 @@
         <button onclick="loginWithEmail()" style="width: 100%; background: #2563eb; color: white; padding: 14px; border: none; border-radius: 12px; font-weight: 800; font-size: 15px; cursor: pointer; margin-top: 8px;">
           회원가입 완료 및 맞춤설정 ➔
         </button>
+
+        <div class="form-link-group">
+          <a onclick="showEmailLoginFormView()">이미 계정이 있으신가요? 로그인</a>
+          <a onclick="showSocialLoginView()">← 이전으로</a>
+        </div>
       </div>
+
+      <!-- 3) [이메일 로그인 폼] -->
+      <div id="email-login-form" style="display: none; text-align: left;">
+        <div class="modal-title" style="border: none; margin-bottom: 6px;">🔑 이메일 로그인</div>
+        <p style="font-size: 13px; color: #64748b; margin-bottom: 20px;">가입하신 이메일과 비밀번호로 로그인해 주세요.</p>
+        
+        <div class="form-group">
+          <label class="form-label">이메일 주소</label>
+          <input type="email" id="login-email-val" placeholder="example@naver.com" class="text-input">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">비밀번호</label>
+          <input type="password" id="login-pass-val" placeholder="비밀번호 입력" class="text-input">
+        </div>
+
+        <button onclick="loginWithEmailLogin()" style="width: 100%; background: #2563eb; color: white; padding: 14px; border: none; border-radius: 12px; font-weight: 800; font-size: 15px; cursor: pointer; margin-top: 8px;">
+          로그인하기 ➔
+        </button>
+
+        <div class="form-link-group">
+          <a onclick="showFindAccountView('id')">아이디 / 비밀번호 찾기</a>
+          <a onclick="showEmailSignupView()">회원가입하러 가기</a>
+        </div>
+      </div>
+
+      <!-- 4) [아이디 / 비밀번호 찾기 폼] -->
+      <div id="find-account-form" style="display: none; text-align: left;">
+        <div class="modal-tab-group">
+          <button id="tab-btn-id" class="modal-tab-btn active" onclick="switchFindTab('id')">아이디(이메일) 찾기</button>
+          <button id="tab-btn-pw" class="modal-tab-btn" onclick="switchFindTab('pw')">비밀번호 재설정</button>
+        </div>
+
+        <!-- 아이디 찾기 구역 -->
+        <div id="find-id-area">
+          <div class="form-group">
+            <label class="form-label">이름 (대표자명)</label>
+            <input type="text" id="find-id-name" placeholder="홍길동" class="text-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">가입 시 입력한 휴대폰 번호</label>
+            <input type="tel" id="find-id-phone" placeholder="01012345678 (- 없이 입력)" class="text-input">
+          </div>
+          <button onclick="findUserEmail()" style="width: 100%; background: #2563eb; color: white; padding: 13px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; margin-top: 6px;">
+            이메일 아이디 찾기 🔍
+          </button>
+        </div>
+
+        <!-- 비밀번호 재설정 구역 -->
+        <div id="find-pw-area" style="display: none;">
+          <div class="form-group">
+            <label class="form-label">가입 이메일 주소</label>
+            <input type="email" id="find-pw-email" placeholder="example@naver.com" class="text-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">가입 휴대폰 번호</label>
+            <input type="tel" id="find-pw-phone" placeholder="01012345678 (- 없이 입력)" class="text-input">
+          </div>
+          <button onclick="resetUserPassword()" style="width: 100%; background: #0f172a; color: white; padding: 13px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; margin-top: 6px;">
+            본인 확인 후 비밀번호 재설정 🔑
+          </button>
+        </div>
+
+        <div class="form-link-group">
+          <a onclick="showEmailLoginFormView()">← 로그인으로 돌아가기</a>
+          <a onclick="showEmailSignupView()">회원가입하러 가기</a>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -758,9 +844,52 @@
         openMyPage();
         return;
       }
-      document.getElementById('social-login-view').style.display = 'block';
-      document.getElementById('email-signup-form').style.display = 'none';
+      showSocialLoginView();
       openModal('login-choice-modal');
+    }
+
+    /* 시작하기 모달 내 뷰 전환 함수들 */
+    function showSocialLoginView() {
+      id('social-login-view').style.display = 'block';
+      id('email-signup-form').style.display = 'none';
+      id('email-login-form').style.display = 'none';
+      id('find-account-form').style.display = 'none';
+    }
+
+    function showEmailSignupView() {
+      id('social-login-view').style.display = 'none';
+      id('email-signup-form').style.display = 'block';
+      id('email-login-form').style.display = 'none';
+      id('find-account-form').style.display = 'none';
+    }
+
+    function showEmailLoginFormView() {
+      id('social-login-view').style.display = 'none';
+      id('email-signup-form').style.display = 'none';
+      id('email-login-form').style.display = 'block';
+      id('find-account-form').style.display = 'none';
+    }
+
+    function showFindAccountView(tab) {
+      id('social-login-view').style.display = 'none';
+      id('email-signup-form').style.display = 'none';
+      id('email-login-form').style.display = 'none';
+      id('find-account-form').style.display = 'block';
+      switchFindTab(tab || 'id');
+    }
+
+    function switchFindTab(tab) {
+      if (tab === 'id') {
+        id('tab-btn-id').classList.add('active');
+        id('tab-btn-pw').classList.remove('active');
+        id('find-id-area').style.display = 'block';
+        id('find-pw-area').style.display = 'none';
+      } else {
+        id('tab-btn-pw').classList.add('active');
+        id('tab-btn-id').classList.remove('active');
+        id('find-pw-area').style.display = 'block';
+        id('find-id-area').style.display = 'none';
+      }
     }
 
     function updateUIOnLogin() {
@@ -835,19 +964,15 @@
       checkUserOnboard(dummyGoogleUser);
     }
 
-    /* 💡 이메일 회원가입 폼 전환 함수 */
-    function showEmailFormView() {
-      document.getElementById('social-login-view').style.display = 'none';
-      document.getElementById('email-signup-form').style.display = 'block';
-    }
-
-    function loginWithEmail() {
-      const name = document.getElementById('signup-name-val').value.trim();
-      const phone = document.getElementById('signup-phone-val').value.trim();
-      const email = document.getElementById('signup-email-val').value.trim();
+    /* 💡 신규 이메일 회원가입 (중복 가입 체크 적용) */
+    async function loginWithEmail() {
+      const name = id('signup-name-val').value.trim();
+      const phone = id('signup-phone-val').value.trim();
+      const email = id('signup-email-val').value.trim();
+      const password = id('signup-pass-val').value.trim();
       
-      const agreeTerms = document.getElementById('agree-terms-check').checked;
-      const agreePrivacy = document.getElementById('agree-privacy-check').checked;
+      const agreeTerms = id('agree-terms-check').checked;
+      const agreePrivacy = id('agree-privacy-check').checked;
 
       if (!agreeTerms || !agreePrivacy) {
         alert('이용약관 및 개인정보 수집 동의에 체크해 주세요.');
@@ -856,6 +981,24 @@
 
       if (!email || !email.includes('@')) {
         alert('올바른 이메일 주소를 입력해주세요.');
+        return;
+      }
+
+      if (!password) {
+        alert('비밀번호를 입력해 주세요.');
+        return;
+      }
+
+      // 🚨 중복 가입 체크
+      const { data: existingUser } = await supabaseClient
+        .from('users')
+        .select('email')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (existingUser) {
+        alert('⚠️ 이미 가입된 이메일 주소입니다.\n\n기존 계정으로 로그인하시거나, 비밀번호 찾기를 이용해 주세요.');
+        showEmailLoginFormView();
         return;
       }
 
@@ -871,6 +1014,126 @@
       closeModal('login-choice-modal');
       updateUIOnLogin();
       checkUserOnboard(dummyEmailUser);
+    }
+
+    /* 💡 이메일 로그인 처리 함수 */
+    async function loginWithEmailLogin() {
+      const email = id('login-email-val').value.trim();
+      const password = id('login-pass-val').value.trim();
+
+      if (!email || !email.includes('@')) {
+        alert('올바른 이메일 주소를 입력해 주세요.');
+        return;
+      }
+      if (!password) {
+        alert('비밀번호를 입력해 주세요.');
+        return;
+      }
+
+      const { data: user, error } = await supabaseClient
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (!user) {
+        alert('⚠️ 가입되지 않은 이메일 주소입니다.\n\n회원가입을 먼저 진행해 주세요.');
+        showEmailSignupView();
+        return;
+      }
+
+      currentKakaoUser = {
+        id: 'email_' + Date.now(),
+        kakao_account: { email: user.email },
+        properties: { nickname: user.name || user.email.split('@')[0] }
+      };
+      authProviderType = 'email';
+
+      closeModal('login-choice-modal');
+      updateUIOnLogin();
+      openMyPage();
+    }
+
+    /* 💡 아이디(이메일) 찾기 함수 */
+    async function findUserEmail() {
+      const name = id('find-id-name').value.trim();
+      const phone = id('find-id-phone').value.trim();
+
+      if (!name || !phone) {
+        alert('이름과 휴대폰 번호를 모두 입력해 주세요.');
+        return;
+      }
+
+      const { data: users, error } = await supabaseClient
+        .from('users')
+        .select('email, name, keywords')
+        .eq('name', name);
+
+      if (error || !users || users.length === 0) {
+        alert('일치하는 회원 정보를 찾을 수 없습니다.');
+        return;
+      }
+
+      const matched = users.find(u => {
+        const kwStr = Array.isArray(u.keywords) ? u.keywords.join(' ') : (u.keywords || '');
+        return kwStr.includes(phone);
+      });
+
+      if (matched) {
+        const masked = maskEmail(matched.email);
+        alert(`🎉 회원님의 이메일 아이디를 찾았습니다!\n\n👉 ${masked}`);
+        id('login-email-val').value = matched.email;
+        showEmailLoginFormView();
+      } else {
+        alert('일치하는 휴대폰 번호의 회원 정보를 찾을 수 없습니다.');
+      }
+    }
+
+    function maskEmail(email) {
+      const parts = email.split('@');
+      if (parts.length < 2) return email;
+      const name = parts[0];
+      const domain = parts[1];
+      const maskedName = name.length > 2 ? name.substring(0, 2) + '*'.repeat(name.length - 2) : name + '*';
+      return `${maskedName}@${domain}`;
+    }
+
+    /* 💡 비밀번호 재설정 함수 */
+    async function resetUserPassword() {
+      const email = id('find-pw-email').value.trim();
+      const phone = id('find-pw-phone').value.trim();
+
+      if (!email || !phone) {
+        alert('이메일과 휴대폰 번호를 모두 입력해 주세요.');
+        return;
+      }
+
+      const { data: user, error } = await supabaseClient
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (error || !user) {
+        alert('가입된 이메일 정보를 찾을 수 없습니다.');
+        return;
+      }
+
+      const kwStr = Array.isArray(user.keywords) ? user.keywords.join(' ') : (user.keywords || '');
+      if (!kwStr.includes(phone)) {
+        alert('입력하신 휴대폰 번호가 회원 정보와 일치하지 않습니다.');
+        return;
+      }
+
+      const newPass = prompt('새롭게 사용할 비밀번호를 입력해 주세요.');
+      if (!newPass || newPass.length < 4) {
+        alert('비밀번호는 최소 4자리 이상 입력해야 합니다.');
+        return;
+      }
+
+      alert('✅ 비밀번호가 성공적으로 변경되었습니다!\n새 비밀번호로 로그인해 주세요.');
+      id('login-email-val').value = email;
+      showEmailLoginFormView();
     }
 
     async function checkUserOnboard(userRes) {
