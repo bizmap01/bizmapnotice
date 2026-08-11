@@ -23,8 +23,8 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install requests pandas curl_cffi beautifulsoup4 openpyxl supabase playwright
-        playwright install chromium
-        sudo playwright install-deps
+        python -m playwright install chromium
+        sudo $(which python) -m playwright install-deps
 
     - name: 4. 매일 아침 크롤러 및 알림톡/문자 발송 실행
       run: |
