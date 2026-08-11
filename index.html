@@ -645,7 +645,8 @@
           <p><b>회원명:</b> <span id="mypage-user-name">불러오는 중...</span></p>
           <p style="margin-top: 4px;"><b>로그인 계정:</b> <span id="mypage-user-email" style="color: #2563eb; font-weight: 700;">불러오는 중...</span></p>
           <p style="margin-top: 4px;"><b>로그인 수단:</b> <span id="mypage-user-provider" style="background: #eff6ff; color: #1d4ed8; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">불러오는 중...</span></p>
-          <p style="margin-top: 4px;"><b>알림 상태:</b> <span style="background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">카톡 알림 가동 중</span></p>
+          <!-- 💡 실시간 DB 결제 상태에 따른 알림 상태 뱃지 동적 반영 -->
+          <p style="margin-top: 4px;"><b>알림 상태:</b> <span id="mypage-status-badge" style="padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">불러오는 중...</span></p>
         </div>
 
         <div class="form-group">
@@ -764,7 +765,7 @@
 
         <h3>제11조 (분쟁 해결 및 관할법원)</h3>
         <p>① 회사와 회원 간에 발생한 분쟁에 대해서는 상호 협의하여 원만히 해결함을 원칙으로 합니다.<br>
-        ② 분쟁이 해결되지 아니하여 소讼이 제기될 경우, 회사의 본사 소재지 관할 법원(부산지방법원)을 전속 관할법원으로 합니다.</p>
+        ② 분쟁이 해결되지 아니하여 소訟이 제기될 경우, 회사의 본사 소재지 관할 법원(부산지방법원)을 전속 관할법원으로 합니다.</p>
 
         <p style="margin-top:24px; font-weight:700; color:#0f172a;">부칙 : 이 약관은 2026년 5월 1일부터 시행합니다.</p>
       </div>
@@ -831,15 +832,9 @@
     const SUPABASE_KEY = 'sb_publishable_P19tdkj74ibIy7Xdle2i4w_M1B1mhV_';
     const KAKAO_JS_KEY = '9bd12d1c0e5ec843cafec8513fc92cc8';
 
-    // 💡 KG이니시스 정기결제 테스트 발급 정보
-    // MID: INIBillTst
-    // SignKey: SU5JTElURV9UUklQTEVERVNfS0VZU1RS
-    // INILite Key: b09LVzhuTGZVaEY1WmJoQnZzdXpRdz09
-    
-    // 💡 포트원 가맹점 식별코드 (Store ID)
-    // ※ 포트원 콘솔 [결제 연동] -> [연동 정보]에서 대표님의 Store ID(예: imp12345678)로 변경해 주세요.
+    // 💡 포트원 가맹점 식별코드 (Store ID) 및 채널키
     const PORTONE_STORE_ID = "imp16466056"; 
-    const PORTONE_CHANNEL_KEY = "channel-key-7440cf74-3778-422b-ba68-1ab66753683a"; // 방금 발급된 테스트 채널키
+    const PORTONE_CHANNEL_KEY = "channel-key-7440cf74-3778-422b-ba68-1ab66753683a"; 
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
@@ -1285,12 +1280,13 @@
       const email = currentKakaoUser.kakao_account?.email || `user_${currentKakaoUser.id}@bizmap.local`;
       const name = currentKakaoUser.properties?.nickname || '사용자';
 
+      // 🚨 결제 승인 전까지는 미결제 대기(inactive) 상태로 안전하게 저장
       const userPayload = {
         email: email,
         name: name,
         keywords: combinedKeywords,
         provider: authProviderType,
-        subscription_status: 'inactive' // 💡 결제 완료 시 active로 전환
+        subscription_status: 'inactive'
       };
 
       let { error: dbError } = await supabaseClient
@@ -1327,21 +1323,20 @@
         return;
       }
 
-      // 💡 포트원 결제창 호출 (KG이니시스 빌링 테스트 MID: INIBillTst 연동)
       IMP.request_pay({
-        pg: "html5_inicis.INIBillTst", // KG이니시스 빌링 테스트 MID 지정
-        channelKey: PORTONE_CHANNEL_KEY, // 포트원 콘솔 채널키
+        pg: "html5_inicis.INIBillTst", // KG이니시스 빌링 테스트 MID
+        channelKey: PORTONE_CHANNEL_KEY,
         pay_method: "card",
         merchant_uid: `bizmap_${planType}_${Date.now()}`,
         name: planName,
         amount: price,
         buyer_email: userEmail,
         buyer_name: userName,
-        customer_uid: `customer_${userEmail.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}` // 정기결제 빌링키 발급용 고유 ID
+        customer_uid: `customer_${userEmail.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`
       }, async function (rsp) {
         if (rsp.success) {
           try {
-            // 🎉 결제 성공 시 Supabase DB 유저 구독 상태를 'active'로 승인!
+            // 🎉 결제 성공 시 비로소 subscription_status를 'active'로 최종 승인!
             const { error } = await supabaseClient
               .from('users')
               .update({ 
@@ -1391,6 +1386,22 @@
         .eq('email', email)
         .maybeSingle();
 
+      // 🚨 DB의 subscription_status 결제 승인 여부에 따라 알림 상태 뱃지 실시간 동적 변경
+      const statusBadge = document.getElementById('mypage-status-badge');
+      if (data && data.subscription_status === 'active') {
+        if (statusBadge) {
+          statusBadge.style.background = '#dcfce7';
+          statusBadge.style.color = '#15803d';
+          statusBadge.innerText = '카톡 알림 가동 중 🟢';
+        }
+      } else {
+        if (statusBadge) {
+          statusBadge.style.background = '#fee2e2';
+          statusBadge.style.color = '#b91c1c';
+          statusBadge.innerText = '미결제 (알림 대기) 🔴';
+        }
+      }
+
       if (data && data.keywords) {
         const rawKwList = Array.isArray(data.keywords) ? data.keywords : data.keywords.split(',').map(k => k.trim());
         
@@ -1425,7 +1436,7 @@
         });
 
         document.getElementById('mypage-detail-kw').value = detailKwList.join(', ');
-        document.getElementById('mypage-active-toggle').checked = data.subscription_status !== 'inactive';
+        document.getElementById('mypage-active-toggle').checked = data.subscription_status === 'active';
       }
 
       const historyDiv = document.getElementById('mypage-history-list');
