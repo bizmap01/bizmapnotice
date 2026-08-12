@@ -409,7 +409,7 @@
         </div>
       </div>
 
-      <!-- 2) [이메일 회원가입 폼] 🚨 카카오 심사 통과용 (필수) 라벨 명시 -->
+      <!-- 2) [이메일 회원가입 폼] -->
       <div id="email-signup-form" style="display: none; text-align: left;">
         <div class="modal-title" style="border: none; margin-bottom: 6px;">📝 회원가입</div>
         <p style="font-size: 13px; color: #64748b; margin-bottom: 20px;">맞춤 알림톡 수신을 위한 필수 회원 정보를 입력해 주세요.</p>
@@ -628,18 +628,34 @@
     </div>
   </div>
 
-  <!-- 3. 구조화된 유저 마이페이지 모달 -->
+  <!-- 3. 구조화된 유저 마이페이지 모달 (🚨 [구독 관리] 구역 완벽 추가) -->
   <div id="mypage-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 520px;">
       <button class="modal-close" onclick="closeModal('mypage-modal')">✕</button>
       <div class="modal-title">👤 내 알림 설정 (마이페이지)</div>
       <div class="modal-body">
         
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin-bottom: 18px; font-size: 14px;">
+        <!-- 회원 기본 정보 -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin-bottom: 16px; font-size: 14px;">
           <p><b>회원명:</b> <span id="mypage-user-name">불러오는 중...</span></p>
           <p style="margin-top: 4px;"><b>로그인 계정:</b> <span id="mypage-user-email" style="color: #2563eb; font-weight: 700;">불러오는 중...</span></p>
           <p style="margin-top: 4px;"><b>로그인 수단:</b> <span id="mypage-user-provider" style="background: #eff6ff; color: #1d4ed8; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">불러오는 중...</span></p>
           <p style="margin-top: 4px;"><b>알림 상태:</b> <span id="mypage-status-badge" style="padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">불러오는 중...</span></p>
+        </div>
+
+        <!-- 🚨 PG 심사 필수 반영: [구독 관리] 구역 추가 -->
+        <div style="background: #ffffff; border: 1.5px solid #2563eb; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-weight: 800; font-size: 15px; color: #0f172a;">💳 구독 관리 (정기결제)</span>
+            <span id="mypage-plan-label" style="font-size: 12px; font-weight: 700; color: #2563eb; background: #eff6ff; padding: 3px 8px; border-radius: 6px;">구독 중</span>
+          </div>
+          <div id="mypage-sub-desc" style="font-size: 12.5px; color: #475569; line-height: 1.5; margin-bottom: 10px;">
+            매일 아침 맞춤 지원사업 알림이 발송되고 있습니다.
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button id="mypage-pay-btn" onclick="closeModal('mypage-modal'); openModal('payment-modal');" style="display: none; width: 100%; background: #2563eb; color: white; border: none; padding: 10px; border-radius: 8px; font-size: 13.5px; font-weight: 800; cursor: pointer;">💳 구독 결제하기</button>
+            <button id="mypage-cancel-sub-btn" onclick="cancelSubscription()" style="display: none; width: 100%; background: #ffffff; color: #ef4444; border: 1px solid #fca5a5; padding: 9px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer;">❌ 구독 해지 (자동결제 취소)</button>
+          </div>
         </div>
 
         <div class="form-group">
@@ -684,11 +700,10 @@
 
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-top: 1px solid #f1f5f9; margin-bottom: 16px;">
           <div>
-            <label style="font-size: 14px; font-weight: 700; color: #0f172a;">📱 카카오톡 알림 수신</label>
+            <label style="font-size: 14px; font-weight: 700; color: #0f172a;">📱 카카오톡 알림 수신 일시정지</label>
             <div id="unpaid-notice-text" style="font-size: 11px; color: #ef4444; font-weight: 600; display: none;">* 결제 완료 후 알림을 활성화할 수 있습니다.</div>
           </div>
           <div style="display: flex; align-items: center; gap: 8px;">
-            <button id="mypage-pay-btn" onclick="closeModal('mypage-modal'); openModal('payment-modal');" style="display: none; background: #2563eb; color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">💳 구독 결제하기</button>
             <input type="checkbox" id="mypage-active-toggle" style="width: 18px; height: 18px; cursor: pointer;">
           </div>
         </div>
@@ -1394,6 +1409,9 @@
       const statusBadge = document.getElementById('mypage-status-badge');
       const activeToggle = document.getElementById('mypage-active-toggle');
       const payBtn = document.getElementById('mypage-pay-btn');
+      const cancelSubBtn = document.getElementById('mypage-cancel-sub-btn');
+      const planLabel = document.getElementById('mypage-plan-label');
+      const subDesc = document.getElementById('mypage-sub-desc');
       const unpaidNotice = document.getElementById('unpaid-notice-text');
 
       const isPaid = data && data.subscription_status === 'active';
@@ -1409,6 +1427,13 @@
           activeToggle.disabled = false;
         }
         if (payBtn) payBtn.style.display = 'none';
+        if (cancelSubBtn) cancelSubBtn.style.display = 'block';
+        if (planLabel) {
+          planLabel.innerText = '이용 중 🟢';
+          planLabel.style.color = '#15803d';
+          planLabel.style.background = '#dcfce7';
+        }
+        if (subDesc) subDesc.innerText = '매일 아침 설정하신 키워드 조건으로 맞춤 알림톡이 발송됩니다.';
         if (unpaidNotice) unpaidNotice.style.display = 'none';
       } else {
         if (statusBadge) {
@@ -1420,7 +1445,14 @@
           activeToggle.checked = false;
           activeToggle.disabled = true;
         }
-        if (payBtn) payBtn.style.display = 'inline-block';
+        if (payBtn) payBtn.style.display = 'block';
+        if (cancelSubBtn) cancelSubBtn.style.display = 'none';
+        if (planLabel) {
+          planLabel.innerText = '미구독 🔴';
+          planLabel.style.color = '#b91c1c';
+          planLabel.style.background = '#fee2e2';
+        }
+        if (subDesc) subDesc.innerText = '구독 결제 완료 후 매일 아침 맞춤 지원사업 카톡 알림이 시작됩니다.';
         if (unpaidNotice) unpaidNotice.style.display = 'block';
       }
 
@@ -1478,7 +1510,29 @@
           </div>
         `).join('');
       } else {
-        historyDiv.innerHTML = '<p style="color: #94a3b8; text-align: center; margin: 12px 0;">아직 수신된 알림톡 내역이 없습니다.</p>';
+        historyDiv.innerHTML = '<p style="color: #94a3b8; text-align: center; margin: 10px 0;">아직 수신된 알림톡 내역이 없습니다.</p>';
+      }
+    }
+
+    // 🚨 구독 해지 (자동결제 취소) 처리 함수
+    async function cancelSubscription() {
+      if (!currentKakaoUser) return;
+
+      const confirmCancel = confirm('정말로 정기구독을 해지하시겠습니까?\n\n해지 시 다음 결제 주기부터 자동 결제되지 않으며, 카카오톡 알림톡 발송이 중단됩니다.\n(※ 환불 관련 문의는 고객센터 bizmaps01@naver.com으로 접수해 주세요.)');
+      if (!confirmCancel) return;
+
+      const email = currentKakaoUser.kakao_account?.email || `user_${currentKakaoUser.id}@bizmap.local`;
+
+      const { error } = await supabaseClient
+        .from('users')
+        .update({ subscription_status: 'inactive' })
+        .eq('email', email);
+
+      if (error) {
+        alert('구독 해지 처리 중 오류가 발생했습니다: ' + error.message);
+      } else {
+        alert('✅ 정기구독 자동결제 해지가 신청되었습니다.\n그동안 비즈맵 서비스를 이용해 주셔서 감사합니다.');
+        openMyPage(); // 마이페이지 화면 즉시 갱신
       }
     }
 
