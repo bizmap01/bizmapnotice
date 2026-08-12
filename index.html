@@ -902,10 +902,8 @@
       });
     }
 
-    // 🌐 [구글 소셜 로그인 자동 세션 복구 및 콜백 처리]
-    async function initAuth() {
-      const { data: { session }, error } = await supabaseClient.auth.getSession();
-
+    // 🌐 [수정 완료] 구글 소셜 로그인 실시간 상태변화 감지 및 자동 세션/팝업 연결
+    supabaseClient.auth.onAuthStateChange(async (event, session) => {
       if (session && session.user) {
         const user = session.user;
         currentKakaoUser = {
@@ -915,35 +913,20 @@
         };
         authProviderType = 'google';
 
-        // 1. 로그인 상태로 헤더 버튼 변경
+        // 1. 헤더 로그인 UI 동기화
         updateUIOnLogin();
 
-        // 2. 구글 OAuth 인증 후 되돌아온 첫 순간(URL 쿼리/해시가 있을 때) 팝업 자동 실행
+        // 2. 구글 OAuth 인증 리다이렉트 시점 감지 (?code= 또는 #access_token=)
         const isOAuthRedirect = window.location.search.includes('code=') || window.location.hash.includes('access_token=');
-        if (isOAuthRedirect) {
-          // 지저분한 URL 파라미터 정리
-          window.history.replaceState({}, document.title, window.location.pathname);
+        
+        if (isOAuthRedirect || event === 'SIGNED_IN') {
+          if (isOAuthRedirect) {
+            // URL 파라미터 깔끔하게 정리
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+          // 온보딩(설정) 또는 마이페이지 팝업 자동 실행
           await checkUserOnboard(currentKakaoUser);
         }
-      }
-    }
-
-    // DOM 로드 즉시 인증 세션 확인
-    document.addEventListener('DOMContentLoaded', () => {
-      initAuth();
-    });
-
-    // Supabase 실시간 인증 변화 이벤트 수신
-    supabaseClient.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session && session.user) {
-        const user = session.user;
-        currentKakaoUser = {
-          id: user.id,
-          kakao_account: { email: user.email },
-          properties: { nickname: user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0] }
-        };
-        authProviderType = 'google';
-        updateUIOnLogin();
       } else if (event === 'SIGNED_OUT') {
         updateUIOnLogout();
       }
