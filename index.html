@@ -570,6 +570,7 @@
         <div class="form-group">
           <label class="form-label">🏢 기업 형태 / 업력 구분</label>
           <div class="chip-group" id="onboarding-category-chips">
+            <button type="button" class="chip-btn" data-cat="전체" onclick="selectCategoryChip('onboarding', this, '전체')">⚡ 전체 (제한 없음)</button>
             <button type="button" class="chip-btn active" data-cat="소상공인" onclick="selectCategoryChip('onboarding', this, '소상공인')">🏪 소상공인/자영업</button>
             <button type="button" class="chip-btn" data-cat="창업" onclick="selectCategoryChip('onboarding', this, '창업')">🚀 예비/초기창업</button>
             <button type="button" class="chip-btn" data-cat="제조" onclick="selectCategoryChip('onboarding', this, '제조')">🏭 제조/중소기업</button>
@@ -681,6 +682,7 @@
         <div class="form-group">
           <label class="form-label">🏢 기업 형태 / 업력 구분</label>
           <div class="chip-group" id="mypage-category-chips">
+            <button type="button" class="chip-btn" data-cat="전체" onclick="selectCategoryChip('mypage', this, '전체')">⚡ 전체 (제한 없음)</button>
             <button type="button" class="chip-btn active" data-cat="소상공인" onclick="selectCategoryChip('mypage', this, '소상공인')">🏪 소상공인/자영업</button>
             <button type="button" class="chip-btn" data-cat="창업" onclick="selectCategoryChip('mypage', this, '창업')">🚀 예비/초기창업</button>
             <button type="button" class="chip-btn" data-cat="제조" onclick="selectCategoryChip('mypage', this, '제조')">🏭 제조/중소기업</button>
@@ -881,6 +883,7 @@
 
     function normalizeCategory(str) {
       if (!str) return null;
+      if (str.includes("전체")) return "전체";
       if (str.includes("소상공인") || str.includes("자영업")) return "소상공인";
       if (str.includes("창업")) return "창업";
       if (str.includes("제조") || str.includes("중소")) return "제조";
@@ -1291,6 +1294,7 @@
 
       let baseCount = 8;
       if (region === '전국') baseCount += 15;
+      if (onboardingCategory === '전체') baseCount += 20;
       if (region.includes('부산') || region.includes('서울') || region.includes('경기')) baseCount += 7;
       if (detailKw.length > 0) baseCount += 4;
 
@@ -1298,14 +1302,15 @@
 
       const previewList = document.getElementById('preview-item-list');
       const kwTag = detailKw ? detailKw.split(',')[0] : '지원금';
+      const catLabel = onboardingCategory === '전체' ? '전체 분야' : onboardingCategory;
 
       previewList.innerHTML = `
         <div class="preview-item">
-          <div class="preview-item-title">2026년 ${region} ${onboardingCategory} ${kwTag} 맞춤 지원공고</div>
+          <div class="preview-item-title">2026년 ${region} ${catLabel} ${kwTag} 맞춤 지원공고</div>
           <div class="preview-item-sub">• 발행기관: ${region} 관련 기관 | 신청기한: ~ 2026.08.28 까지</div>
         </div>
         <div class="preview-item">
-          <div class="preview-item-title">2026년 디딤돌 ${onboardingCategory} 혁신 성장 바우처 지원</div>
+          <div class="preview-item-title">2026년 디딤돌 ${catLabel} 혁신 성장 바우처 지원</div>
           <div class="preview-item-sub">• 발행기관: 중소벤처기업부 | 신청기한: ~ 2026.09.05 까지</div>
         </div>
       `;
