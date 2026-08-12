@@ -902,8 +902,10 @@
       });
     }
 
-    // 🌐 수파베이스 인증 상태 변화 실시간 감지 (구글 OAuth 리다이렉트 완벽 대응)
-    supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    // 🌐 [구글 소셜 로그인 자동 세션 복구 및 콜백 처리]
+    async function initAuth() {
+      const { data: { session }, error } = await supabaseClient.auth.getSession();
+
       if (session && session.user) {
         const user = session.user;
         currentKakaoUser = {
@@ -913,11 +915,37 @@
         };
         authProviderType = 'google';
 
-        // 헤더 UI 버튼 전환
+        // 1. 로그인 상태로 헤더 버튼 변경
         updateUIOnLogin();
 
-        // 신규 유저 온보딩 및 기존 유저 처리
-        await checkUserOnboard(currentKakaoUser);
+        // 2. 구글 OAuth 인증 후 되돌아온 첫 순간(URL 쿼리/해시가 있을 때) 팝업 자동 실행
+        const isOAuthRedirect = window.location.search.includes('code=') || window.location.hash.includes('access_token=');
+        if (isOAuthRedirect) {
+          // 지저분한 URL 파라미터 정리
+          window.history.replaceState({}, document.title, window.location.pathname);
+          await checkUserOnboard(currentKakaoUser);
+        }
+      }
+    }
+
+    // DOM 로드 즉시 인증 세션 확인
+    document.addEventListener('DOMContentLoaded', () => {
+      initAuth();
+    });
+
+    // Supabase 실시간 인증 변화 이벤트 수신
+    supabaseClient.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session && session.user) {
+        const user = session.user;
+        currentKakaoUser = {
+          id: user.id,
+          kakao_account: { email: user.email },
+          properties: { nickname: user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0] }
+        };
+        authProviderType = 'google';
+        updateUIOnLogin();
+      } else if (event === 'SIGNED_OUT') {
+        updateUIOnLogout();
       }
     });
 
@@ -1229,7 +1257,7 @@
     async function checkUserOnboard(userRes) {
       const userEmail = userRes.kakao_account?.email || `user_${userRes.id}@bizmap.local`;
 
-      // 기존 가입자인지 먼저 체크
+      // 기존 가입자인지 체크
       const { data: existingUser } = await supabaseClient
         .from('users')
         .select('*')
@@ -1237,10 +1265,12 @@
         .maybeSingle();
 
       if (existingUser && existingUser.keywords && existingUser.keywords.length > 0) {
-        // 이미 온보딩을 마친 기존 유저는 헤더 버튼만 로그인 상태로 변경
+        // 이미 온보딩을 마친 유저는 마이페이지 바로 오픈
+        openMyPage();
         return;
       }
 
+      // 신규 회원인 경우 온보딩(휴대폰 입력) 팝업 오픈
       id('onboarding-region').value = '전국';
       id('onboarding-detail-kw').value = '';
 
