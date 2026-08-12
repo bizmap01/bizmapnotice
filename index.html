@@ -416,127 +416,56 @@
       </div>
 
       <!-- 2) [이메일 회원가입 폼] -->
-      <div id="email-signup-form" style="display: none; text-align: left;">
-        <div class="modal-title" style="border: none; margin-bottom: 6px;">📝 회원가입</div>
-        <p style="font-size: 13px; color: #64748b; margin-bottom: 20px;">맞춤 알림톡 수신을 위한 필수 회원 정보를 입력해 주세요.</p>
-        
-        <div class="form-group">
-          <label class="form-label">이름 (대표자명)</label>
-          <input type="text" id="signup-name-val" placeholder="홍길동" class="text-input" autocomplete="off">
-        </div>
+<div id="email-signup-form" style="display: none; text-align: left;">
+  <div class="modal-title" style="border: none; margin-bottom: 6px;">📝 회원가입</div>
+  <p style="font-size: 13px; color: #64748b; margin-bottom: 20px;">맞춤 알림톡 수신을 위한 필수 회원 정보를 입력해 주세요.</p>
+  
+  <div class="form-group">
+    <label class="form-label">이름 (대표자명) <span style="color: #ef4444; font-weight: 800;">(필수)</span></label>
+    <input type="text" id="signup-name-val" placeholder="홍길동" class="text-input" autocomplete="off">
+  </div>
 
-        <div class="form-group">
-          <label class="form-label">휴대폰 번호 (알림톡 수신용)</label>
-          <input type="tel" id="signup-phone-val" placeholder="01012345678 (- 없이 입력)" class="text-input" autocomplete="off">
-        </div>
+  <div class="form-group">
+    <label class="form-label">휴대폰 번호 (알림톡 수신용) <span style="color: #ef4444; font-weight: 800;">(필수)</span></label>
+    <input type="tel" id="signup-phone-val" placeholder="01012345678 (- 없이 입력)" class="text-input" autocomplete="off">
+  </div>
 
-        <div class="form-group">
-          <label class="form-label">이메일 주소</label>
-          <input type="email" id="signup-email-val" placeholder="example@naver.com" class="text-input" autocomplete="off">
-        </div>
+  <div class="form-group">
+    <label class="form-label">이메일 주소 <span style="color: #ef4444; font-weight: 800;">(필수)</span></label>
+    <input type="email" id="signup-email-val" placeholder="example@naver.com" class="text-input" autocomplete="off">
+  </div>
 
-        <div class="form-group">
-          <label class="form-label">비밀번호</label>
-          <input type="password" id="signup-pass-val" placeholder="비밀번호 입력" class="text-input" autocomplete="new-password">
-        </div>
+  <div class="form-group">
+    <label class="form-label">비밀번호 <span style="color: #ef4444; font-weight: 800;">(필수)</span></label>
+    <input type="password" id="signup-pass-val" placeholder="비밀번호 입력" class="text-input" autocomplete="new-password">
+  </div>
 
-        <div class="agreement-box">
-          <div class="agreement-item">
-            <label class="agreement-label">
-              <input type="checkbox" id="agree-terms-check" checked>
-              <span>[필수] 이용약관 동의</span>
-            </label>
-            <a onclick="openModal('terms-modal')" style="color: #2563eb; text-decoration: underline; cursor: pointer;">보기</a>
-          </div>
-          <div class="agreement-item">
-            <label class="agreement-label">
-              <input type="checkbox" id="agree-privacy-check" checked>
-              <span>[필수] 개인정보 수집 및 이용 동의</span>
-            </label>
-            <a onclick="openModal('privacy-modal')" style="color: #2563eb; text-decoration: underline; cursor: pointer;">보기</a>
-          </div>
-        </div>
-
-        <button onclick="loginWithEmail()" style="width: 100%; background: #2563eb; color: white; padding: 14px; border: none; border-radius: 12px; font-weight: 800; font-size: 15px; cursor: pointer; margin-top: 8px;">
-          회원가입 완료 및 맞춤설정 ➔
-        </button>
-
-        <div class="form-link-group">
-          <a onclick="showEmailLoginFormView()">이미 계정이 있으신가요? 로그인</a>
-          <a onclick="showSocialLoginView()">← 이전으로</a>
-        </div>
-      </div>
-
-      <!-- 3) [이메일 로그인 폼] -->
-      <div id="email-login-form" style="display: none; text-align: left;">
-        <div class="modal-title" style="border: none; margin-bottom: 6px;">🔑 이메일 로그인</div>
-        <p style="font-size: 13px; color: #64748b; margin-bottom: 20px;">가입하신 이메일과 비밀번호로 로그인해 주세요.</p>
-        
-        <div class="form-group">
-          <label class="form-label">이메일 주소</label>
-          <input type="email" id="login-email-val" placeholder="example@naver.com" class="text-input" autocomplete="off">
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">비밀번호</label>
-          <input type="password" id="login-pass-val" placeholder="비밀번호 입력" class="text-input" autocomplete="current-password">
-        </div>
-
-        <button onclick="loginWithEmailLogin()" style="width: 100%; background: #2563eb; color: white; padding: 14px; border: none; border-radius: 12px; font-weight: 800; font-size: 15px; cursor: pointer; margin-top: 8px;">
-          로그인하기 ➔
-        </button>
-
-        <div class="form-link-group">
-          <a onclick="showFindAccountView('id')">아이디 / 비밀번호 찾기</a>
-          <a onclick="showEmailSignupView()">회원가입하러 가기</a>
-        </div>
-      </div>
-
-      <!-- 4) [아이디 / 비밀번호 찾기 폼] -->
-      <div id="find-account-form" style="display: none; text-align: left;">
-        <div class="modal-tab-group">
-          <button id="tab-btn-id" class="modal-tab-btn active" onclick="switchFindTab('id')">아이디(이메일) 찾기</button>
-          <button id="tab-btn-pw" class="modal-tab-btn" onclick="switchFindTab('pw')">비밀번호 재설정</button>
-        </div>
-
-        <!-- 아이디 찾기 구역 -->
-        <div id="find-id-area">
-          <div class="form-group">
-            <label class="form-label">이름 (대표자명)</label>
-            <input type="text" id="find-id-name" placeholder="홍길동" class="text-input" autocomplete="off">
-          </div>
-          <div class="form-group">
-            <label class="form-label">가입 시 입력한 휴대폰 번호</label>
-            <input type="tel" id="find-id-phone" placeholder="01012345678 (- 없이 입력)" class="text-input" autocomplete="off">
-          </div>
-          <button onclick="findUserEmail()" style="width: 100%; background: #2563eb; color: white; padding: 13px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; margin-top: 6px;">
-            이메일 아이디 찾기 🔍
-          </button>
-        </div>
-
-        <!-- 비밀번호 재설정 구역 -->
-        <div id="find-pw-area" style="display: none;">
-          <div class="form-group">
-            <label class="form-label">가입 이메일 주소</label>
-            <input type="email" id="find-pw-email" placeholder="example@naver.com" class="text-input" autocomplete="off">
-          </div>
-          <div class="form-group">
-            <label class="form-label">가입 휴대폰 번호</label>
-            <input type="tel" id="find-pw-phone" placeholder="01012345678 (- 없이 입력)" class="text-input" autocomplete="off">
-          </div>
-          <button onclick="resetUserPassword()" style="width: 100%; background: #0f172a; color: white; padding: 13px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; margin-top: 6px;">
-            본인 확인 후 비밀번호 재설정 🔑
-          </button>
-        </div>
-
-        <div class="form-link-group">
-          <a onclick="showEmailLoginFormView()">← 로그인으로 돌아가기</a>
-          <a onclick="showEmailSignupView()">회원가입하러 가기</a>
-        </div>
-      </div>
-
+  <div class="agreement-box">
+    <div class="agreement-item">
+      <label class="agreement-label">
+        <input type="checkbox" id="agree-terms-check" checked>
+        <span>[필수] 이용약관 동의</span>
+      </label>
+      <a onclick="openModal('terms-modal')" style="color: #2563eb; text-decoration: underline; cursor: pointer;">보기</a>
+    </div>
+    <div class="agreement-item">
+      <label class="agreement-label">
+        <input type="checkbox" id="agree-privacy-check" checked>
+        <span>[필수] 개인정보 수집 및 이용 동의</span>
+      </label>
+      <a onclick="openModal('privacy-modal')" style="color: #2563eb; text-decoration: underline; cursor: pointer;">보기</a>
     </div>
   </div>
+
+  <button onclick="loginWithEmail()" style="width: 100%; background: #2563eb; color: white; padding: 14px; border: none; border-radius: 12px; font-weight: 800; font-size: 15px; cursor: pointer; margin-top: 8px;">
+    회원가입 완료 및 맞춤설정 ➔
+  </button>
+
+  <div class="form-link-group">
+    <a onclick="showEmailLoginFormView()">이미 계정이 있으신가요? 로그인</a>
+    <a onclick="showSocialLoginView()">← 이전으로</a>
+  </div>
+</div>
 
   <!-- 1. 온보딩 모달 -->
   <div id="keyword-modal" class="modal-overlay">
