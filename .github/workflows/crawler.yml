@@ -2,12 +2,12 @@ name: Bizmap Notice Daily Crawler
 
 on:
   schedule:
-    # 💡 한국 시간(KST) 매일 아침 09:00 정각 자동 실행
-    - cron: '0 0 * * *'
-  workflow_dispatch: # 💡 깃허브 웹사이트에서 수동 즉시 실행 가능
+    # 🔴 한국 시간(KST) 매일 아침 8시 자동 실행 (UTC 기준 전날 23:00)
+    - cron: '0 23 * * *'
+  workflow_dispatch: # 수동 실행 버튼 유지
 
 jobs:
-  run-crawler:
+  build:
     runs-on: ubuntu-latest
 
     steps:
