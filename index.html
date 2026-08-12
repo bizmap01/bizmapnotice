@@ -748,32 +748,28 @@
         <p>① 회사는 회원에게 수집된 공공 및 지자체 지원사업 정보를 기반으로 키워드 매칭 알림을 제공합니다.<br>
         ② 공고 정보는 공공기관의 원본 공고를 바탕으로 수집되나, 발송 이후 공고 내용의 변경·연기·취소에 대해 회사는 직접적인 책임을 지지 않습니다.</p>
 
-        <h3>제5조 (회원가입 및 계정 관리)</h3>
-        <p>① 회원가입은 카카오, 구글 소셜 로그인 또는 이메일 등록을 통해 성립됩니다.<br>
-        ② 회원은 가입 시 정확한 본인의 정보를 등록해야 하며, 타인의 정보를 도용하여 가입한 경우 법적 보호를 받지 못할 수 있습니다.</p>
-
-        <h3>제6조 (회원의 의무 및 면책)</h3>
+        <h3>제5조 (회원의 의무 및 면책)</h3>
         <p>① 회원은 서비스를 이용함에 있어 관계 법령, 본 약관의 규정, 회사의 주의사항을 준수해야 합니다.<br>
         ② 회사가 제공하는 정보는 참고용이며, 회사는 회원의 지원사업 선정 결과를 보장하지 않습니다.<br>
         ③ 회사는 천재지변, 공공기관 서버 오류, 기타 불가항력적인 사유로 인한 서비스 제공 중단에 대하여 책임을 지지 않습니다.</p>
 
-        <h3>제7조 (구독 요금 및 정기결제)</h3>
+        <h3>제6조 (구독 요금 및 정기결제)</h3>
         <p>① 서비스 구독 요금은 월간 정기구독(3,900원/월) 및 6개월 정기구독(19,900원/6개월)으로 구성되며, 결제 수단에 따라 정기적으로 자동 갱신 결제됩니다.<br>
         ② 이용 요금의 변경 시 회사는 최소 30일 전에 회원에게 개별 고지합니다.</p>
 
-        <h3>제8조 (청약철회 및 환불 정책)</h3>
+        <h3>제7조 (청약철회 및 환불 정책)</h3>
         <p>① 회원은 정기결제 후 서비스 이용 내역이 없거나 결제일로부터 24시간 이내에 환불을 요청할 경우 100% 전액 환불을 받을 수 있습니다.<br>
         ② 이용 중 중도 해지 시에는 환불 신청일을 기준으로 이미 제공된 서비스 이용 기간에 해당하는 이용금액을 일할 계산하여 차감한 후 잔여 금액을 환불합니다.<br>
         ③ 회사의 명백한 귀책사유로 인하여 알림 서비스가 지속적으로 누락된 경우 전액 환불 처리됩니다.</p>
 
-        <h3>제9조 (서비스 이용 해지 및 회원 탈퇴)</h3>
+        <h3>제8조 (서비스 이용 해지 및 회원 탈퇴)</h3>
         <p>① 회원은 마이페이지 내 [회원 탈퇴하기] 메뉴를 통해 언제든지 자유롭게 탈퇴를 신청할 수 있습니다.<br>
         ② 회원 탈퇴 완료 시 회원의 기존 맞춤 키워드 및 카카오톡 수신 설정 데이터는 즉시 삭제됩니다.</p>
 
-        <h3>제10조 (손해배상)</h3>
+        <h3>제9조 (손해배상)</h3>
         <p>회사는 무료 서비스 이용과 관련하여 회원에게 발생한 어떠한 손해에 대해서도 책임을 지지 않습니다. 단, 회사의 고의 또는 중대한 과실로 인하여 손해가 발생한 경우는 예외로 합니다.</p>
 
-        <h3>제11조 (분쟁 해결 및 관할법원)</h3>
+        <h3>제10조 (분쟁 해결 및 관할법원)</h3>
         <p>① 회사와 회원 간에 발생한 분쟁에 대해서는 상호 협의하여 원만히 해결함을 원칙으로 합니다.<br>
         ② 분쟁이 해결되지 아니하여 소訟이 제기될 경우, 회사의 본사 소재지 관할 법원(부산지방법원)을 전속 관할법원으로 합니다.</p>
 
@@ -906,22 +902,24 @@
       });
     }
 
-    // 🌐 페이지 로드 시 구글 OAuth 리다이렉트 세션 감지
-    async function checkSupabaseSessionOnLoad() {
-      const { data: { session } } = await supabaseClient.auth.getSession();
+    // 🌐 수파베이스 인증 상태 변화 실시간 감지 (구글 OAuth 리다이렉트 완벽 대응)
+    supabaseClient.auth.onAuthStateChange(async (event, session) => {
       if (session && session.user) {
         const user = session.user;
         currentKakaoUser = {
           id: user.id,
           kakao_account: { email: user.email },
-          properties: { nickname: user.user_metadata?.full_name || user.email.split('@')[0] }
+          properties: { nickname: user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0] }
         };
         authProviderType = 'google';
+
+        // 헤더 UI 버튼 전환
         updateUIOnLogin();
+
+        // 신규 유저 온보딩 및 기존 유저 처리
         await checkUserOnboard(currentKakaoUser);
       }
-    }
-    checkSupabaseSessionOnLoad();
+    });
 
     function openLoginOptionsModal() {
       if (currentKakaoUser) {
@@ -1043,7 +1041,7 @@
       const { data, error } = await supabaseClient.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + window.location.pathname
+          redirectTo: 'https://notice.bizmap.co.kr'
         }
       });
       if (error) {
@@ -1238,8 +1236,8 @@
         .eq('email', userEmail)
         .maybeSingle();
 
-      if (existingUser && existingUser.keywords) {
-        // 이미 온보딩을 마친 기존 유저는 바로 마이페이지 안내
+      if (existingUser && existingUser.keywords && existingUser.keywords.length > 0) {
+        // 이미 온보딩을 마친 기존 유저는 헤더 버튼만 로그인 상태로 변경
         return;
       }
 
