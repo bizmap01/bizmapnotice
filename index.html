@@ -841,7 +841,7 @@
     const PORTONE_STORE_ID = "imp16466056"; 
     const PORTONE_CHANNEL_KEY = "channel-key-7440cf74-3778-422b-ba68-1ab66753683a"; 
 
-    // 수파베이스 클라이언트 세션 자동 복구 옵션 명시
+    // 수파베이스 클라이언트 세션 자동 복구 및 OAuth 파라미터 보존
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: {
         autoRefreshToken: true,
@@ -909,7 +909,7 @@
       });
     }
 
-    // 🌐 [수정 완벽 적용] 인증 리스너 기반 구글 로그인 및 세션 동기화
+    // 🌐 [수정 완료] 수파베이스 SDK의 인증 교환이 마감된 후 깔끔하게 세션을 여는 정상 리스너
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
       if (session && session.user) {
         const user = session.user;
@@ -920,20 +920,11 @@
         };
         authProviderType = 'google';
 
-        // 1. 헤더 UI 즉시 변경
+        // 1. 헤더 로그인 UI 동기화
         updateUIOnLogin();
 
-        // 2. 구글 OAuth 로그인 리다이렉트 파라미터 확인 (?code= 또는 #access_token=)
-        const isOAuthRedirect = window.location.search.includes('code=') || window.location.hash.includes('access_token=');
-        
-        if (isOAuthRedirect || event === 'SIGNED_IN') {
-          if (isOAuthRedirect) {
-            // URL 파라미터 깔끔하게 정리
-            window.history.replaceState({}, document.title, window.location.pathname);
-          }
-          // 무조건 예외 처리 포함된 checkUserOnboard 실행
-          await checkUserOnboard(currentKakaoUser);
-        }
+        // 2. 수파베이스 PKCE 세션 토큰 교환이 완벽히 마감되면 온보딩/마이페이지 오토 팝업
+        await checkUserOnboard(currentKakaoUser);
       } else if (event === 'SIGNED_OUT') {
         updateUIOnLogout();
       }
@@ -1244,13 +1235,11 @@
       showEmailLoginFormView();
     }
 
-    // 🌐 [수정] 예외 처리(try...catch)가 추가되어 DB 오류 시에도 팝업이 멈추지 않는 checkUserOnboard
     async function checkUserOnboard(userRes) {
       if (!userRes) return;
       const userEmail = userRes.kakao_account?.email || `user_${userRes.id}@bizmap.local`;
 
       try {
-        // 기존 가입자인지 수파베이스 DB에서 체크
         const { data: existingUser } = await supabaseClient
           .from('users')
           .select('*')
@@ -1258,7 +1247,6 @@
           .maybeSingle();
 
         if (existingUser && existingUser.keywords && existingUser.keywords.length > 0) {
-          // 이미 온보딩을 마친 유저는 마이페이지 팝업 오픈
           openMyPage();
           return;
         }
@@ -1266,7 +1254,6 @@
         console.error("User onboard check error:", err);
       }
 
-      // DB 조회가 없거나 신규 회원인 경우 온보딩(휴대폰 입력) 팝업 오픈
       id('onboarding-region').value = '전국';
       id('onboarding-detail-kw').value = '';
 
