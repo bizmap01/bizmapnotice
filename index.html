@@ -111,7 +111,6 @@
     .footer-links a { color: #cbd5e1; text-decoration: none; cursor: pointer; }
     .footer-links a:hover { color: #60a5fa; text-decoration: underline; }
 
-    /* 💡 PG 심사 통과용 푸터 환불/취소 정책 박스 */
     .refund-policy-box {
       max-width: 840px;
       margin: 20px auto 24px auto;
@@ -127,7 +126,6 @@
     .refund-policy-box ul { padding-left: 18px; margin-top: 6px; }
     .refund-policy-box li { margin-bottom: 4px; }
 
-    /* 모달 공통 */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.75); z-index: 1000; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(4px); }
     .modal-content { background: #ffffff; width: 100%; max-width: 850px; max-height: 85vh; border-radius: 20px; padding: 36px 30px; position: relative; overflow-y: auto; text-align: left; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
     .modal-title { font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; }
@@ -137,14 +135,12 @@
     .modal-body p, .modal-body ul { margin-bottom: 12px; }
     .modal-body ul { padding-left: 20px; }
 
-    /* 로그인 버튼 스타일 */
     .social-login-btn { width: 100%; padding: 14px; border-radius: 12px; font-size: 15px; font-weight: 800; border: none; cursor: pointer; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 10px; transition: transform 0.1s; }
     .social-login-btn:active { transform: scale(0.98); }
     .btn-kakao-style { background: #fee500; color: #000; }
     .btn-google-style { background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; }
     .btn-email-style { background: #0f172a; color: #ffffff; }
 
-    /* 폼 입력 요소 스타일 */
     .form-group { margin-bottom: 16px; }
     .form-label { font-size: 13.5px; font-weight: 700; color: #0f172a; margin-bottom: 6px; display: block; }
     .select-input, .text-input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; outline: none; background: #ffffff; }
@@ -158,7 +154,6 @@
     .preview-item-title { font-weight: 700; color: #0f172a; margin-bottom: 2px; }
     .preview-item-sub { color: #64748b; font-size: 11.5px; }
 
-    /* 약관 체크박스 및 탭 구역 스타일 */
     .agreement-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin: 16px 0; text-align: left; font-size: 13px; }
     .agreement-item { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
     .agreement-item:last-child { margin-bottom: 0; }
@@ -375,7 +370,6 @@
       <p>대표번호 : 010-8468-7138 | 문의 : bizmaps01@naver.com</p>
     </div>
 
-    <!-- 🚨 PG 심사팀 필수 검수 항목: 환불, 취소 및 청약철회 안내 박스 -->
     <div class="refund-policy-box">
       <p style="font-weight: 800; font-size: 14px; color: #f8fafc; margin-bottom: 6px;">[환불, 취소 및 청약철회 안내]</p>
       <ul>
@@ -415,57 +409,128 @@
         </div>
       </div>
 
-      <!-- 2) [이메일 회원가입 폼] -->
-<div id="email-signup-form" style="display: none; text-align: left;">
-  <div class="modal-title" style="border: none; margin-bottom: 6px;">📝 회원가입</div>
-  <p style="font-size: 13px; color: #64748b; margin-bottom: 20px;">맞춤 알림톡 수신을 위한 필수 회원 정보를 입력해 주세요.</p>
-  
-  <div class="form-group">
-    <label class="form-label">이름 (대표자명) <span style="color: #ef4444; font-weight: 800;">(필수)</span></label>
-    <input type="text" id="signup-name-val" placeholder="홍길동" class="text-input" autocomplete="off">
-  </div>
+      <!-- 2) [이메일 회원가입 폼] 🚨 카카오 심사 통과용 (필수) 라벨 명시 -->
+      <div id="email-signup-form" style="display: none; text-align: left;">
+        <div class="modal-title" style="border: none; margin-bottom: 6px;">📝 회원가입</div>
+        <p style="font-size: 13px; color: #64748b; margin-bottom: 20px;">맞춤 알림톡 수신을 위한 필수 회원 정보를 입력해 주세요.</p>
+        
+        <div class="form-group">
+          <label class="form-label">이름 (대표자명) <span style="color: #ef4444; font-weight: 800;">(필수)</span></label>
+          <input type="text" id="signup-name-val" placeholder="홍길동" class="text-input" autocomplete="off">
+        </div>
 
-  <div class="form-group">
-    <label class="form-label">휴대폰 번호 (알림톡 수신용) <span style="color: #ef4444; font-weight: 800;">(필수)</span></label>
-    <input type="tel" id="signup-phone-val" placeholder="01012345678 (- 없이 입력)" class="text-input" autocomplete="off">
-  </div>
+        <div class="form-group">
+          <label class="form-label">휴대폰 번호 (알림톡 수신용) <span style="color: #ef4444; font-weight: 800;">(필수)</span></label>
+          <input type="tel" id="signup-phone-val" placeholder="01012345678 (- 없이 입력)" class="text-input" autocomplete="off">
+        </div>
 
-  <div class="form-group">
-    <label class="form-label">이메일 주소 <span style="color: #ef4444; font-weight: 800;">(필수)</span></label>
-    <input type="email" id="signup-email-val" placeholder="example@naver.com" class="text-input" autocomplete="off">
-  </div>
+        <div class="form-group">
+          <label class="form-label">이메일 주소 <span style="color: #ef4444; font-weight: 800;">(필수)</span></label>
+          <input type="email" id="signup-email-val" placeholder="example@naver.com" class="text-input" autocomplete="off">
+        </div>
 
-  <div class="form-group">
-    <label class="form-label">비밀번호 <span style="color: #ef4444; font-weight: 800;">(필수)</span></label>
-    <input type="password" id="signup-pass-val" placeholder="비밀번호 입력" class="text-input" autocomplete="new-password">
-  </div>
+        <div class="form-group">
+          <label class="form-label">비밀번호 <span style="color: #ef4444; font-weight: 800;">(필수)</span></label>
+          <input type="password" id="signup-pass-val" placeholder="비밀번호 입력" class="text-input" autocomplete="new-password">
+        </div>
 
-  <div class="agreement-box">
-    <div class="agreement-item">
-      <label class="agreement-label">
-        <input type="checkbox" id="agree-terms-check" checked>
-        <span>[필수] 이용약관 동의</span>
-      </label>
-      <a onclick="openModal('terms-modal')" style="color: #2563eb; text-decoration: underline; cursor: pointer;">보기</a>
+        <div class="agreement-box">
+          <div class="agreement-item">
+            <label class="agreement-label">
+              <input type="checkbox" id="agree-terms-check" checked>
+              <span>[필수] 이용약관 동의</span>
+            </label>
+            <a onclick="openModal('terms-modal')" style="color: #2563eb; text-decoration: underline; cursor: pointer;">보기</a>
+          </div>
+          <div class="agreement-item">
+            <label class="agreement-label">
+              <input type="checkbox" id="agree-privacy-check" checked>
+              <span>[필수] 개인정보 수집 및 이용 동의</span>
+            </label>
+            <a onclick="openModal('privacy-modal')" style="color: #2563eb; text-decoration: underline; cursor: pointer;">보기</a>
+          </div>
+        </div>
+
+        <button onclick="loginWithEmail()" style="width: 100%; background: #2563eb; color: white; padding: 14px; border: none; border-radius: 12px; font-weight: 800; font-size: 15px; cursor: pointer; margin-top: 8px;">
+          회원가입 완료 및 맞춤설정 ➔
+        </button>
+
+        <div class="form-link-group">
+          <a onclick="showEmailLoginFormView()">이미 계정이 있으신가요? 로그인</a>
+          <a onclick="showSocialLoginView()">← 이전으로</a>
+        </div>
+      </div>
+
+      <!-- 3) [이메일 로그인 폼] -->
+      <div id="email-login-form" style="display: none; text-align: left;">
+        <div class="modal-title" style="border: none; margin-bottom: 6px;">🔑 이메일 로그인</div>
+        <p style="font-size: 13px; color: #64748b; margin-bottom: 20px;">가입하신 이메일과 비밀번호로 로그인해 주세요.</p>
+        
+        <div class="form-group">
+          <label class="form-label">이메일 주소</label>
+          <input type="email" id="login-email-val" placeholder="example@naver.com" class="text-input" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">비밀번호</label>
+          <input type="password" id="login-pass-val" placeholder="비밀번호 입력" class="text-input" autocomplete="current-password">
+        </div>
+
+        <button onclick="loginWithEmailLogin()" style="width: 100%; background: #2563eb; color: white; padding: 14px; border: none; border-radius: 12px; font-weight: 800; font-size: 15px; cursor: pointer; margin-top: 8px;">
+          로그인하기 ➔
+        </button>
+
+        <div class="form-link-group">
+          <a onclick="showFindAccountView('id')">아이디 / 비밀번호 찾기</a>
+          <a onclick="showEmailSignupView()">회원가입하러 가기</a>
+        </div>
+      </div>
+
+      <!-- 4) [아이디 / 비밀번호 찾기 폼] -->
+      <div id="find-account-form" style="display: none; text-align: left;">
+        <div class="modal-tab-group">
+          <button id="tab-btn-id" class="modal-tab-btn active" onclick="switchFindTab('id')">아이디(이메일) 찾기</button>
+          <button id="tab-btn-pw" class="modal-tab-btn" onclick="switchFindTab('pw')">비밀번호 재설정</button>
+        </div>
+
+        <!-- 아이디 찾기 구역 -->
+        <div id="find-id-area">
+          <div class="form-group">
+            <label class="form-label">이름 (대표자명)</label>
+            <input type="text" id="find-id-name" placeholder="홍길동" class="text-input" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label">가입 시 입력한 휴대폰 번호</label>
+            <input type="tel" id="find-id-phone" placeholder="01012345678 (- 없이 입력)" class="text-input" autocomplete="off">
+          </div>
+          <button onclick="findUserEmail()" style="width: 100%; background: #2563eb; color: white; padding: 13px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; margin-top: 6px;">
+            이메일 아이디 찾기 🔍
+          </button>
+        </div>
+
+        <!-- 비밀번호 재설정 구역 -->
+        <div id="find-pw-area" style="display: none;">
+          <div class="form-group">
+            <label class="form-label">가입 이메일 주소</label>
+            <input type="email" id="find-pw-email" placeholder="example@naver.com" class="text-input" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label">가입 휴대폰 번호</label>
+            <input type="tel" id="find-pw-phone" placeholder="01012345678 (- 없이 입력)" class="text-input" autocomplete="off">
+          </div>
+          <button onclick="resetUserPassword()" style="width: 100%; background: #0f172a; color: white; padding: 13px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; margin-top: 6px;">
+            본인 확인 후 비밀번호 재설정 🔑
+          </button>
+        </div>
+
+        <div class="form-link-group">
+          <a onclick="showEmailLoginFormView()">← 로그인으로 돌아가기</a>
+          <a onclick="showEmailSignupView()">회원가입하러 가기</a>
+        </div>
+      </div>
+
     </div>
-    <div class="agreement-item">
-      <label class="agreement-label">
-        <input type="checkbox" id="agree-privacy-check" checked>
-        <span>[필수] 개인정보 수집 및 이용 동의</span>
-      </label>
-      <a onclick="openModal('privacy-modal')" style="color: #2563eb; text-decoration: underline; cursor: pointer;">보기</a>
-    </div>
   </div>
-
-  <button onclick="loginWithEmail()" style="width: 100%; background: #2563eb; color: white; padding: 14px; border: none; border-radius: 12px; font-weight: 800; font-size: 15px; cursor: pointer; margin-top: 8px;">
-    회원가입 완료 및 맞춤설정 ➔
-  </button>
-
-  <div class="form-link-group">
-    <a onclick="showEmailLoginFormView()">이미 계정이 있으신가요? 로그인</a>
-    <a onclick="showSocialLoginView()">← 이전으로</a>
-  </div>
-</div>
 
   <!-- 1. 온보딩 모달 -->
   <div id="keyword-modal" class="modal-overlay">
@@ -475,7 +540,7 @@
       <div class="modal-body">
         
         <div id="phone-input-group" class="form-group" style="display: none; background: #fffbebfb; border: 1px solid #fcd34d; padding: 12px; border-radius: 10px;">
-          <label class="form-label" style="color: #b45309;">📱 카카오톡 수신 휴대폰 번호 (필수)</label>
+          <label class="form-label" style="color: #b45309;">📱 카카오톡 수신 휴대폰 번호 <span style="color: #ef4444; font-weight: 800;">(필수)</span></label>
           <input type="tel" id="user-phone-number" placeholder="예: 01012345678 (- 없이 입력)" class="text-input" autocomplete="off">
           <p style="font-size: 11px; color: #b45309; margin-top: 4px;">* 카카오 알림톡 수신에 사용됩니다.</p>
         </div>
@@ -574,7 +639,6 @@
           <p><b>회원명:</b> <span id="mypage-user-name">불러오는 중...</span></p>
           <p style="margin-top: 4px;"><b>로그인 계정:</b> <span id="mypage-user-email" style="color: #2563eb; font-weight: 700;">불러오는 중...</span></p>
           <p style="margin-top: 4px;"><b>로그인 수단:</b> <span id="mypage-user-provider" style="background: #eff6ff; color: #1d4ed8; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">불러오는 중...</span></p>
-          <!-- 💡 실시간 DB 결제 상태에 따른 알림 상태 뱃지 동적 반영 -->
           <p style="margin-top: 4px;"><b>알림 상태:</b> <span id="mypage-status-badge" style="padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">불러오는 중...</span></p>
         </div>
 
@@ -767,7 +831,6 @@
     const SUPABASE_KEY = 'sb_publishable_P19tdkj74ibIy7Xdle2i4w_M1B1mhV_';
     const KAKAO_JS_KEY = '9bd12d1c0e5ec843cafec8513fc92cc8';
 
-    // 💡 포트원 가맹점 식별코드 (Store ID) 및 채널키
     const PORTONE_STORE_ID = "imp16466056"; 
     const PORTONE_CHANNEL_KEY = "channel-key-7440cf74-3778-422b-ba68-1ab66753683a"; 
 
@@ -970,6 +1033,16 @@
 
       if (!agreeTerms || !agreePrivacy) {
         alert('이용약관 및 개인정보 수집 동의에 체크해 주세요.');
+        return;
+      }
+
+      if (!name) {
+        alert('이름을 입력해 주세요.');
+        return;
+      }
+
+      if (!phone) {
+        alert('휴대폰 번호를 입력해 주세요.');
         return;
       }
 
@@ -1215,7 +1288,6 @@
       const email = currentKakaoUser.kakao_account?.email || `user_${currentKakaoUser.id}@bizmap.local`;
       const name = currentKakaoUser.properties?.nickname || '사용자';
 
-      // 🚨 결제 승인 전까지는 미결제 대기(inactive) 상태로 안전하게 저장
       const userPayload = {
         email: email,
         name: name,
@@ -1241,14 +1313,12 @@
       openModal('payment-modal');
     }
 
-    // 💳 포트원(KG이니시스 빌링 테스트) 결제 실행 함수
     async function executePay(planType) {
       if (!currentKakaoUser) {
         alert("로그인 정보가 없습니다. 먼저 로그인해 주세요.");
         return;
       }
 
-      // 💡 플랜 타입에 따른 가격 및 상품명 동적 설정
       const price = planType === 'monthly' ? 3900 : 19900;
       const planName = planType === 'monthly' ? '비즈맵 지원사업 알림 (월간 정기구독)' : '비즈맵 지원사업 알림 (6개월 정기구독)';
       const userEmail = currentKakaoUser.kakao_account?.email || `user_${currentKakaoUser.id}@bizmap.local`;
@@ -1260,7 +1330,7 @@
       }
 
       IMP.request_pay({
-        pg: "html5_inicis.INIBillTst", // KG이니시스 빌링 테스트 MID
+        pg: "html5_inicis.INIBillTst",
         channelKey: PORTONE_CHANNEL_KEY,
         pay_method: "card",
         merchant_uid: `bizmap_${planType}_${Date.now()}`,
@@ -1272,7 +1342,6 @@
       }, async function (rsp) {
         if (rsp.success) {
           try {
-            // 🎉 결제 성공 시 비로소 subscription_status를 'active'로 최종 승인!
             const { error } = await supabaseClient
               .from('users')
               .update({ 
@@ -1322,7 +1391,6 @@
         .eq('email', email)
         .maybeSingle();
 
-      // 🚨 DB의 subscription_status 결제 승인 여부에 따라 스위치 비활성화 및 결제 유도 버튼 노출
       const statusBadge = document.getElementById('mypage-status-badge');
       const activeToggle = document.getElementById('mypage-active-toggle');
       const payBtn = document.getElementById('mypage-pay-btn');
@@ -1338,7 +1406,7 @@
         }
         if (activeToggle) {
           activeToggle.checked = true;
-          activeToggle.disabled = false; // 결제 유저는 스위치 자유롭게 토글 가능
+          activeToggle.disabled = false;
         }
         if (payBtn) payBtn.style.display = 'none';
         if (unpaidNotice) unpaidNotice.style.display = 'none';
@@ -1350,7 +1418,7 @@
         }
         if (activeToggle) {
           activeToggle.checked = false;
-          activeToggle.disabled = true; // 🚨 미결제 유저는 스위치를 임의로 켤 수 없음!
+          activeToggle.disabled = true;
         }
         if (payBtn) payBtn.style.display = 'inline-block';
         if (unpaidNotice) unpaidNotice.style.display = 'block';
@@ -1372,7 +1440,6 @@
           } else if (normCat) {
             foundCategory = normCat;
           } else if (k.includes('📱') || /^\d{9,11}$/.test(k.replace(/[^0-9]/g, ''))) {
-            // 전화번호 데이터 스킵
           } else {
             if (k && k.length > 0) detailKwList.push(k);
           }
@@ -1421,7 +1488,6 @@
       const email = currentKakaoUser.kakao_account?.email || `user_${currentKakaoUser.id}@bizmap.local`;
       const name = currentKakaoUser.properties?.nickname || '사용자';
 
-      // 🚨 현재 DB에 저장된 실제 결제 상태를 먼저 조회해 우회 방지
       const { data: userData } = await supabaseClient
         .from('users')
         .select('keywords, subscription_status')
@@ -1453,7 +1519,6 @@
       }
 
       const activeToggle = document.getElementById('mypage-active-toggle');
-      // 🚨 결제 유저만 스위치 상태 반영, 미결제 유저는 무조건 'inactive'로 강제 고정!
       const finalSubscriptionStatus = isPaidUser ? (activeToggle.checked ? 'active' : 'inactive') : 'inactive';
 
       const msgDiv = document.getElementById('mypage-msg');
