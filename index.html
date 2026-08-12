@@ -493,7 +493,6 @@
           <button id="tab-btn-pw" class="modal-tab-btn" onclick="switchFindTab('pw')">비밀번호 재설정</button>
         </div>
 
-        <!-- 아이디 찾기 구역 -->
         <div id="find-id-area">
           <div class="form-group">
             <label class="form-label">이름 (대표자명)</label>
@@ -508,7 +507,6 @@
           </button>
         </div>
 
-        <!-- 비밀번호 재설정 구역 -->
         <div id="find-pw-area" style="display: none;">
           <div class="form-group">
             <label class="form-label">가입 이메일 주소</label>
@@ -542,7 +540,7 @@
         <div id="phone-input-group" class="form-group" style="display: none; background: #fffbebfb; border: 1px solid #fcd34d; padding: 12px; border-radius: 10px;">
           <label class="form-label" style="color: #b45309;">📱 카카오톡 수신 휴대폰 번호 <span style="color: #ef4444; font-weight: 800;">(필수)</span></label>
           <input type="tel" id="user-phone-number" placeholder="예: 01012345678 (- 없이 입력)" class="text-input" autocomplete="off">
-          <p style="font-size: 11px; color: #b45309; margin-top: 4px;">* 카카오 알림톡 수신에 사용됩니다.</p>
+          <p style="font-size: 11px; color: #b45309; margin-top: 4px;">* 카카오 알림톡 및 문자 수신에 사용됩니다.</p>
         </div>
 
         <div class="form-group">
@@ -628,14 +626,13 @@
     </div>
   </div>
 
-  <!-- 3. 구조화된 유저 마이페이지 모달 (🚨 [구독 관리] 구역 완벽 추가) -->
+  <!-- 3. 구조화된 유저 마이페이지 모달 -->
   <div id="mypage-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 520px;">
       <button class="modal-close" onclick="closeModal('mypage-modal')">✕</button>
       <div class="modal-title">👤 내 알림 설정 (마이페이지)</div>
       <div class="modal-body">
         
-        <!-- 회원 기본 정보 -->
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin-bottom: 16px; font-size: 14px;">
           <p><b>회원명:</b> <span id="mypage-user-name">불러오는 중...</span></p>
           <p style="margin-top: 4px;"><b>로그인 계정:</b> <span id="mypage-user-email" style="color: #2563eb; font-weight: 700;">불러오는 중...</span></p>
@@ -643,7 +640,6 @@
           <p style="margin-top: 4px;"><b>알림 상태:</b> <span id="mypage-status-badge" style="padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">불러오는 중...</span></p>
         </div>
 
-        <!-- 🚨 PG 심사 필수 반영: [구독 관리] 구역 추가 -->
         <div style="background: #ffffff; border: 1.5px solid #2563eb; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <span style="font-weight: 800; font-size: 15px; color: #0f172a;">💳 구독 관리 (정기결제)</span>
@@ -910,6 +906,23 @@
       });
     }
 
+    // 🌐 페이지 로드 시 구글 OAuth 리다이렉트 세션 감지
+    async function checkSupabaseSessionOnLoad() {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session && session.user) {
+        const user = session.user;
+        currentKakaoUser = {
+          id: user.id,
+          kakao_account: { email: user.email },
+          properties: { nickname: user.user_metadata?.full_name || user.email.split('@')[0] }
+        };
+        authProviderType = 'google';
+        updateUIOnLogin();
+        await checkUserOnboard(currentKakaoUser);
+      }
+    }
+    checkSupabaseSessionOnLoad();
+
     function openLoginOptionsModal() {
       if (currentKakaoUser) {
         openMyPage();
@@ -986,7 +999,8 @@
       }
     }
 
-    function logoutWithKakao() {
+    async function logoutWithKakao() {
+      await supabaseClient.auth.signOut();
       currentKakaoUser = null;
       authProviderType = 'kakao';
       resetAllForms();
@@ -1023,18 +1037,18 @@
       });
     }
 
-    function loginWithGoogle() {
-      currentKakaoUser = null;
+    // 🌐 구글 정식 소셜 로그인 연동
+    async function loginWithGoogle() {
       authProviderType = 'google';
-      const dummyGoogleUser = {
-        id: 'google_' + Date.now(),
-        kakao_account: { email: 'google_user_' + Math.floor(Math.random()*1000) + '@gmail.com' },
-        properties: { nickname: '구글회원' }
-      };
-      currentKakaoUser = dummyGoogleUser;
-      closeModal('login-choice-modal');
-      updateUIOnLogin();
-      checkUserOnboard(dummyGoogleUser);
+      const { data, error } = await supabaseClient.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + window.location.pathname
+        }
+      });
+      if (error) {
+        alert('구글 로그인 호출 실패: ' + error.message);
+      }
     }
 
     async function loginWithEmail() {
@@ -1215,6 +1229,20 @@
     }
 
     async function checkUserOnboard(userRes) {
+      const userEmail = userRes.kakao_account?.email || `user_${userRes.id}@bizmap.local`;
+
+      // 기존 가입자인지 먼저 체크
+      const { data: existingUser } = await supabaseClient
+        .from('users')
+        .select('*')
+        .eq('email', userEmail)
+        .maybeSingle();
+
+      if (existingUser && existingUser.keywords) {
+        // 이미 온보딩을 마친 기존 유저는 바로 마이페이지 안내
+        return;
+      }
+
       id('onboarding-region').value = '전국';
       id('onboarding-detail-kw').value = '';
 
@@ -1281,7 +1309,7 @@
       if (authProviderType !== 'kakao') {
         phoneVal = document.getElementById('user-phone-number').value.trim();
         if (!phoneVal) {
-          alert('카카오톡 알림톡 수신을 위해 휴대폰 번호를 입력해 주세요.');
+          alert('카카오톡 알림톡 및 문자 수신을 위해 휴대폰 번호를 입력해 주세요.');
           document.getElementById('user-phone-number').focus();
           return;
         }
@@ -1510,11 +1538,10 @@
           </div>
         `).join('');
       } else {
-        historyDiv.innerHTML = '<p style="color: #94a3b8; text-align: center; margin: 10px 0;">아직 수신된 알림톡 내역이 없습니다.</p>';
+        historyDiv.innerHTML = '<p style="color: #94a3b8; text-align: center; margin: 12px 0;">아직 수신된 알림톡 내역이 없습니다.</p>';
       }
     }
 
-    // 🚨 구독 해지 (자동결제 취소) 처리 함수
     async function cancelSubscription() {
       if (!currentKakaoUser) return;
 
@@ -1532,7 +1559,7 @@
         alert('구독 해지 처리 중 오류가 발생했습니다: ' + error.message);
       } else {
         alert('✅ 정기구독 자동결제 해지가 신청되었습니다.\n그동안 비즈맵 서비스를 이용해 주셔서 감사합니다.');
-        openMyPage(); // 마이페이지 화면 즉시 갱신
+        openMyPage();
       }
     }
 
