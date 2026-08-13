@@ -168,7 +168,7 @@ def send_lms_message(to_phone, user_name, org_name, title, target_url):
         return False, str(e)
 
 def send_kakao_alimtalk(to_phone, user_name, org_name, title, target_url):
-    """솔라피 카카오 알림톡 API 발송 함수 (버튼 중복 전송 오류 수정 완료)"""
+    """솔라피 카카오 알림톡 API 발송 함수 (버튼 URL 정상 연동)"""
     solapi_url = "https://api.solapi.com/messages/v4/send"
     headers = get_solapi_headers()
     today_str = datetime.date.today().strftime('%Y.%m.%d')
@@ -178,9 +178,10 @@ def send_kakao_alimtalk(to_phone, user_name, org_name, title, target_url):
     payload = {
         "message": {
             "to": clean_phone,
-            "from": MY_PHONE,  # 발신번호 (대체발송 시 사용)
+            "from": MY_PHONE,
+            "type": "ATA",
             
-            # 카카오 알림톡 설정 (템플릿 변수 매칭)
+            # 카카오 알림톡 설정 (kakaoOptions 내부에 buttons 배치)
             "kakaoOptions": {
                 "pfId": SOLAPI_PF_ID,
                 "templateId": SOLAPI_TEMPLATE_ID,
@@ -190,7 +191,15 @@ def send_kakao_alimtalk(to_phone, user_name, org_name, title, target_url):
                     "#{공고제목}": title or "신규 지원사업 공고",
                     "#{등록일}": today_str
                 },
-                "disableSms": False  # 🔥 알림톡 수신 실패 시 LMS 자동 대체발송!
+                "buttons": [
+                    {
+                        "buttonType": "WL",
+                        "buttonName": "공고 상세보기",
+                        "linkMo": target_url,
+                        "linkPc": target_url
+                    }
+                ],
+                "disableSms": False  # 알림톡 실패 시 LMS 자동 대체발송
             },
             
             # 대체발송(LMS) 문구
