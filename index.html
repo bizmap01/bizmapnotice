@@ -913,7 +913,7 @@
       });
     }
 
-    // 🌐 [수정 완료] 수파베이스 SDK의 인증 교환이 마감된 후 깔끔하게 세션을 여는 정상 리스너
+    // 🌐 [수정 완료] 수파베이스 SDK의 인증 교환이 마감된 후 세션 확인 및 카카오 알림톡 원클릭(?today=true) 오픈 연동
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
       if (session && session.user) {
         const user = session.user;
@@ -927,8 +927,14 @@
         // 1. 헤더 로그인 UI 동기화
         updateUIOnLogin();
 
-        // 2. 수파베이스 PKCE 세션 토큰 교환이 완벽히 마감되면 온보딩/마이페이지 오토 팝업
-        await checkUserOnboard(currentKakaoUser);
+        // 2. 카카오 알림톡의 ?today=true 버튼 클릭 접속 시 즉시 마이페이지(오늘 알림 내역) 오픈
+        const isTodayRedirect = window.location.search.includes('today=true');
+        if (isTodayRedirect) {
+          openMyPage();
+        } else {
+          // 온보딩 미완료 유저 체크
+          await checkUserOnboard(currentKakaoUser);
+        }
       } else if (event === 'SIGNED_OUT') {
         updateUIOnLogout();
       }
