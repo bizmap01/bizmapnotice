@@ -351,8 +351,43 @@ def is_valid_real_notice(title):
         return False
     return True
 
+def make_full_url(a_elem, target_url):
+    """자바스크립트(fn_egov...) 및 일반 href 링크를 개별 상세페이지 URL로 스마트 변환"""
+    if not a_elem:
+        return target_url
+    
+    href = a_elem.get("href", "").strip()
+    onclick = a_elem.get("onclick", "").strip()
+    attr_str = href + " " + onclick
+
+    # 1. 표준 웹 주소인 경우
+    if href and not href.startswith("javascript") and href != "#" and href != "none":
+        return urljoin(target_url, href)
+
+    # 2. 자바스크립트 함수(javascript:fn_egov...('8951'))로 연결된 경우 ID 자동 추출
+    numbers = re.findall(r"['\"](\d+)['\"]", attr_str) or re.findall(r"\b(\d{4,10})\b", attr_str)
+    
+    if numbers:
+        num_id = numbers[0]
+        
+        # 경북테크노파크 및 전자정부프레임워크 게시판 개별 주소 조합
+        if "gbtp.or.kr" in target_url or "board.do" in target_url:
+            bbs_id_match = re.search(r"bbsId=([^&]+)", target_url)
+            bbs_id = bbs_id_match.group(1) if bbs_id_match else "BBSMSTR_000000000021"
+            return f"https://www.gbtp.or.kr/user/boardDetail.do?bbsId={bbs_id}&nttNo={num_id}"
+        
+        if "seq=" in target_url:
+            return re.sub(r"seq=[^&]+", f"seq={num_id}", target_url)
+        elif "nttNo=" in target_url:
+            return re.sub(r"nttNo=[^&]+", f"nttNo={num_id}", target_url)
+            
+        delim = "&" if "?" in target_url else "?"
+        return f"{target_url}{delim}nttNo={num_id}"
+
+    return target_url
+
 def extract_title_and_link_smart(soup, org_name, target_url):
-    """공고 제목과 함께 개별 상세페이지 URL(href)을 함께 추출"""
+    """공고 제목과 개별 상세페이지 URL을 함께 추출"""
     unwanted_selectors = [
         "header", "footer", "nav", "#header", "#footer", "#gnb", "#lnb", "#snb",
         ".header", ".footer", ".gnb", ".lnb", ".snb", ".sidebar", ".top_menu",
@@ -362,21 +397,13 @@ def extract_title_and_link_smart(soup, org_name, target_url):
         for tag in soup.select(sel):
             tag.decompose()
 
-    def make_full_url(a_elem):
-        if not a_elem:
-            return target_url
-        href = a_elem.get("href", "").strip()
-        if href and not href.startswith("javascript") and href != "#" and href != "none":
-            return urljoin(target_url, href)
-        return target_url
-
     if "제주테크노파크" in org_name:
         for tr in soup.select("tbody tr, table tr"):
             a_tag = tr.select_one("td:nth-child(4) a, td.al a, td.subject a, td a")
             if a_tag:
                 txt = clean_duplicate_text(a_tag.text)
                 if is_valid_real_notice(txt) and not txt.isdigit():
-                    return txt, make_full_url(a_tag)
+                    return txt, make_full_url(a_tag, target_url)
 
     if "전남광주통합" in org_name:
         for item in soup.select("div, li"):
@@ -386,7 +413,7 @@ def extract_title_and_link_smart(soup, org_name, target_url):
                 for l in lines:
                     if is_valid_real_notice(l) and not any(kw in l for kw in ["모집일자", "접수일자", "상세보기", "전남광주", "타온라인", "모집중"]):
                         a_tag = item.select_one("a")
-                        return l, make_full_url(a_tag)
+                        return l, make_full_url(a_tag, target_url)
 
     if "연구개발특구" in org_name:
         for item in soup.select("div, li, article, section"):
@@ -396,20 +423,20 @@ def extract_title_and_link_smart(soup, org_name, target_url):
                 for l in lines:
                     if is_valid_real_notice(l) and not any(n in l for n in ["~", "조회수", "상세보기", "진행중", "마감"]):
                         a_tag = item.select_one("a")
-                        return l, make_full_url(a_tag)
+                        return l, make_full_url(a_tag, target_url)
 
     for tr in soup.select("tbody tr, table tr"):
         a_tag = tr.select_one("td.subject a, td.title a, td.al a, td.left a, td.align_l a, a")
         if a_tag:
             txt = clean_duplicate_text(a_tag.text)
             if is_valid_real_notice(txt):
-                return txt, make_full_url(a_tag)
+                return txt, make_full_url(a_tag, target_url)
 
     for a in soup.select(".kboard-list-title a, .kboard-title a, .pms-board-list td a, .bbs_list td a, .board_list a, ul.board_list li a, div.item a"):
         txt = clean_duplicate_text(a.text)
         if is_valid_real_notice(txt):
             if "javascript" not in txt.lower():
-                return txt, make_full_url(a)
+                return txt, make_full_url(a, target_url)
 
     return None, target_url
 
