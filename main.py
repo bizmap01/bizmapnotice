@@ -22,8 +22,7 @@ SOLAPI_SECRET = "6YH0DTGRHVDXT4HU3RS6T0TDRINDFXH4"
 # 💡 카카오 알림톡 승인 완료 ➔ True로 설정하여 알림톡 모드 가동!
 USE_KAKAO = True
 
-# ⚠️ 솔라피 대시보드 [카카오톡] ➔ [채널 관리]에 나오는 '발신프로필 키'(pf_...)를 확인 후 넣어주세요.
-SOLAPI_PF_ID = "KA01PF260805090058574q8wFwsR3MUx"          # 솔라피 카카오 발신프로필 키 (pf_로 시작하는 값)
+SOLAPI_PF_ID = "KA01PF260805090058574q8wFwsR3MUx"          # 솔라피 카카오 발신프로필 키
 SOLAPI_TEMPLATE_ID = "KA01TP260805090641453jRsTCdFoBOl"  # 승인받으신 템플릿 ID
 
 MY_PHONE = "01084687138"  # 발신번호 및 개발자 비상 경고 수신 번호
@@ -169,7 +168,7 @@ def send_lms_message(to_phone, user_name, org_name, title, target_url):
         return False, str(e)
 
 def send_kakao_alimtalk(to_phone, user_name, org_name, title, target_url):
-    """솔라피 카카오 알림톡 API 발송 함수 (알림톡 실패 시 LMS 문자 자동 대체발송)"""
+    """솔라피 카카오 알림톡 API 발송 함수 (버튼 중복 전송 오류 수정 완료)"""
     solapi_url = "https://api.solapi.com/messages/v4/send"
     headers = get_solapi_headers()
     today_str = datetime.date.today().strftime('%Y.%m.%d')
@@ -179,9 +178,9 @@ def send_kakao_alimtalk(to_phone, user_name, org_name, title, target_url):
     payload = {
         "message": {
             "to": clean_phone,
-            "from": MY_PHONE,  # 발신번호 필수 (대체발송 시 사용)
+            "from": MY_PHONE,  # 발신번호 (대체발송 시 사용)
             
-            # 1) 카카오 알림톡 설정 (승인받으신 템플릿 변수 매칭)
+            # 카카오 알림톡 설정 (템플릿 변수 매칭)
             "kakaoOptions": {
                 "pfId": SOLAPI_PF_ID,
                 "templateId": SOLAPI_TEMPLATE_ID,
@@ -191,18 +190,10 @@ def send_kakao_alimtalk(to_phone, user_name, org_name, title, target_url):
                     "#{공고제목}": title or "신규 지원사업 공고",
                     "#{등록일}": today_str
                 },
-                "disableSms": False  # 🔥 알림톡 발송 실패 시 LMS 문자로 자동 대체발송!
+                "disableSms": False  # 🔥 알림톡 수신 실패 시 LMS 자동 대체발송!
             },
-            "buttons": [
-                {
-                    "buttonType": "WL",
-                    "buttonName": "공고 상세보기",
-                    "linkMo": target_url,
-                    "linkPc": target_url
-                }
-            ],
             
-            # 2) 대체발송(LMS)용 문구 (카톡 수신 실패 시 아래 문자로 자동 발송됨)
+            # 대체발송(LMS) 문구
             "subject": "[비즈맵] 신규 지원사업 공고 알림",
             "text": f"[비즈맵] 신규 지원공고 알림\n\n안녕하세요, {user_name or '대표'}님!\n\n본 알림은 회원님께서 신청하신 맞춤 알림 서비스에 따라, 설정하신 조건에 해당하는 신규 지원사업 공고가 등록되었을 때 발송되는 안내 메시지입니다.\n\n• 지원기관: {org_name}\n• 공고제목: {title}\n• 등록일자: {today_str}\n\n상세보기: {target_url}"
         }
