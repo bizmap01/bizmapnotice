@@ -19,7 +19,7 @@ from supabase import create_client, Client
 SOLAPI_KEY = "NCSOCR94THGOMHSW"
 SOLAPI_SECRET = "6YH0DTGRHVDXT4HU3RS6T0TDRINDFXH4"
 
-# 💡 카카오 알림톡 승인 완료 ➔ True로 설정하여 알림톡 모드 가동!
+# 💡 카카오 알림톡 가동
 USE_KAKAO = True
 
 SOLAPI_PF_ID = "KA01PF260805090058574q8wFwsR3MUx"          # 솔라피 카카오 발신프로필 키
@@ -168,12 +168,15 @@ def send_lms_message(to_phone, user_name, org_name, title, target_url):
         return False, str(e)
 
 def send_kakao_alimtalk(to_phone, user_name, org_name, title, target_url):
-    """솔라피 카카오 알림톡 API 발송 함수 (버튼 URL 정상 연동)"""
+    """솔라피 카카오 알림톡 API 발송 함수 (#{공고링크} 변수 매칭 완료)"""
     solapi_url = "https://api.solapi.com/messages/v4/send"
     headers = get_solapi_headers()
     today_str = datetime.date.today().strftime('%Y.%m.%d')
     
     clean_phone = ''.join(filter(str.isdigit, str(to_phone)))
+    
+    # 템플릿에 https:// 가 이미 작성되어 있으므로 주소 앞의 http:// 및 https:// 를 깔끔히 제거
+    clean_url = re.sub(r'^https?://', '', target_url).strip()
     
     payload = {
         "message": {
@@ -181,7 +184,7 @@ def send_kakao_alimtalk(to_phone, user_name, org_name, title, target_url):
             "from": MY_PHONE,
             "type": "ATA",
             
-            # 카카오 알림톡 설정 (kakaoOptions 내부에 buttons 배치)
+            # 카카오 알림톡 설정 (템플릿 변수 100% 매칭)
             "kakaoOptions": {
                 "pfId": SOLAPI_PF_ID,
                 "templateId": SOLAPI_TEMPLATE_ID,
@@ -189,17 +192,10 @@ def send_kakao_alimtalk(to_phone, user_name, org_name, title, target_url):
                     "#{고객명}": user_name or "대표",
                     "#{기관명}": org_name or "지원기관",
                     "#{공고제목}": title or "신규 지원사업 공고",
-                    "#{등록일}": today_str
+                    "#{등록일}": today_str,
+                    "#{공고링크}": clean_url  # 🔥 https:// 가 제거된 주소 전달
                 },
-                "buttons": [
-                    {
-                        "buttonType": "WL",
-                        "buttonName": "공고 상세보기",
-                        "linkMo": target_url,
-                        "linkPc": target_url
-                    }
-                ],
-                "disableSms": False  # 알림톡 실패 시 LMS 자동 대체발송
+                "disableSms": False  # 알림톡 수신 실패 시 LMS 자동 대체발송
             },
             
             # 대체발송(LMS) 문구
