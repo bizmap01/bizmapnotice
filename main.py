@@ -23,7 +23,7 @@ SOLAPI_SECRET = "6YH0DTGRHVDXT4HU3RS6T0TDRINDFXH4"
 USE_KAKAO = True
 
 # ⚠️ 솔라피 대시보드 [카카오톡] ➔ [채널 관리]에 나오는 '발신프로필 키'(pf_...)를 확인 후 넣어주세요.
-SOLAPI_PF_ID = "pf_..."          # 솔라피 카카오 발신프로필 키 (pf_로 시작하는 값)
+SOLAPI_PF_ID = "KA01PF260805090058574q8wFwsR3MUx"          # 솔라피 카카오 발신프로필 키 (pf_로 시작하는 값)
 SOLAPI_TEMPLATE_ID = "KA01TP260805090641453jRsTCdFoBOl"  # 승인받으신 템플릿 ID
 
 MY_PHONE = "01084687138"  # 발신번호 및 개발자 비상 경고 수신 번호
