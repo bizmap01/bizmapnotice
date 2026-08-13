@@ -8,6 +8,7 @@ import datetime
 import uuid
 import requests
 import pandas as pd
+from urllib.parse import urljoin
 from curl_cffi import requests as cffi_requests
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
@@ -168,14 +169,14 @@ def send_lms_message(to_phone, user_name, org_name, title, target_url):
         return False, str(e)
 
 def send_kakao_alimtalk(to_phone, user_name, org_name, title, target_url):
-    """솔라피 카카오 알림톡 API 발송 함수 (#{공고링크} 변수 매칭 완료)"""
+    """솔라피 카카오 알림톡 API 발송 함수 (#{공고링크} 개별 상세페이지 URL 연동)"""
     solapi_url = "https://api.solapi.com/messages/v4/send"
     headers = get_solapi_headers()
     today_str = datetime.date.today().strftime('%Y.%m.%d')
     
     clean_phone = ''.join(filter(str.isdigit, str(to_phone)))
     
-    # 템플릿에 https:// 가 이미 작성되어 있으므로 주소 앞의 http:// 및 https:// 를 깔끔히 제거
+    # 템플릿에 https:// 가 고정 작성되어 있으므로 주소 앞의 http:// 및 https:// 를 깔끔히 제거
     clean_url = re.sub(r'^https?://', '', target_url).strip()
     
     payload = {
@@ -193,7 +194,7 @@ def send_kakao_alimtalk(to_phone, user_name, org_name, title, target_url):
                     "#{기관명}": org_name or "지원기관",
                     "#{공고제목}": title or "신규 지원사업 공고",
                     "#{등록일}": today_str,
-                    "#{공고링크}": clean_url  # 🔥 https:// 가 제거된 주소 전달
+                    "#{공고링크}": clean_url  # 🔥 개별 공고 상세페이지 URL
                 },
                 "disableSms": False  # 알림톡 수신 실패 시 LMS 자동 대체발송
             },
@@ -350,7 +351,8 @@ def is_valid_real_notice(title):
         return False
     return True
 
-def extract_title_smart(soup, org_name):
+def extract_title_and_link_smart(soup, org_name, target_url):
+    """공고 제목과 함께 개별 상세페이지 URL(href)을 함께 추출"""
     unwanted_selectors = [
         "header", "footer", "nav", "#header", "#footer", "#gnb", "#lnb", "#snb",
         ".header", ".footer", ".gnb", ".lnb", ".snb", ".sidebar", ".top_menu",
@@ -360,13 +362,21 @@ def extract_title_smart(soup, org_name):
         for tag in soup.select(sel):
             tag.decompose()
 
+    def make_full_url(a_elem):
+        if not a_elem:
+            return target_url
+        href = a_elem.get("href", "").strip()
+        if href and not href.startswith("javascript") and href != "#" and href != "none":
+            return urljoin(target_url, href)
+        return target_url
+
     if "제주테크노파크" in org_name:
         for tr in soup.select("tbody tr, table tr"):
             a_tag = tr.select_one("td:nth-child(4) a, td.al a, td.subject a, td a")
             if a_tag:
                 txt = clean_duplicate_text(a_tag.text)
                 if is_valid_real_notice(txt) and not txt.isdigit():
-                    return txt
+                    return txt, make_full_url(a_tag)
 
     if "전남광주통합" in org_name:
         for item in soup.select("div, li"):
@@ -375,7 +385,8 @@ def extract_title_smart(soup, org_name):
                 lines = [clean_duplicate_text(l) for l in text_cand.split('\n') if len(l.strip()) > 8]
                 for l in lines:
                     if is_valid_real_notice(l) and not any(kw in l for kw in ["모집일자", "접수일자", "상세보기", "전남광주", "타온라인", "모집중"]):
-                        return l
+                        a_tag = item.select_one("a")
+                        return l, make_full_url(a_tag)
 
     if "연구개발특구" in org_name:
         for item in soup.select("div, li, article, section"):
@@ -384,22 +395,23 @@ def extract_title_smart(soup, org_name):
                 lines = [clean_duplicate_text(l) for l in text_cand.split('\n') if len(l.strip()) > 8]
                 for l in lines:
                     if is_valid_real_notice(l) and not any(n in l for n in ["~", "조회수", "상세보기", "진행중", "마감"]):
-                        return l
+                        a_tag = item.select_one("a")
+                        return l, make_full_url(a_tag)
 
     for tr in soup.select("tbody tr, table tr"):
         a_tag = tr.select_one("td.subject a, td.title a, td.al a, td.left a, td.align_l a, a")
         if a_tag:
             txt = clean_duplicate_text(a_tag.text)
             if is_valid_real_notice(txt):
-                return txt
+                return txt, make_full_url(a_tag)
 
     for a in soup.select(".kboard-list-title a, .kboard-title a, .pms-board-list td a, .bbs_list td a, .board_list a, ul.board_list li a, div.item a"):
         txt = clean_duplicate_text(a.text)
         if is_valid_real_notice(txt):
             if "javascript" not in txt.lower():
-                return txt
+                return txt, make_full_url(a)
 
-    return None
+    return None, target_url
 
 # ==========================================
 # 5. 공식 Open API 수집 함수들
@@ -517,23 +529,24 @@ def main():
 
         try:
             latest_title = None
+            notice_link = target_url
             
             if any(dyn_org in org_name for dyn_org in DYNAMIC_ORGS):
                 pw_html = fetch_with_playwright(target_url, org_name)
                 if pw_html:
                     pw_soup = BeautifulSoup(pw_html, "html.parser")
-                    latest_title = extract_title_smart(pw_soup, org_name)
+                    latest_title, notice_link = extract_title_and_link_smart(pw_soup, org_name, target_url)
             else:
                 res = fetch_cffi_with_retry(target_url, max_retries=2)
                 if res and res.status_code == 200:
                     soup = BeautifulSoup(res.content.decode('utf-8', errors='ignore'), "html.parser")
-                    latest_title = extract_title_smart(soup, org_name)
+                    latest_title, notice_link = extract_title_and_link_smart(soup, org_name, target_url)
 
                 if not latest_title:
                     pw_html = fetch_with_playwright(target_url, org_name)
                     if pw_html:
                         pw_soup = BeautifulSoup(pw_html, "html.parser")
-                        latest_title = extract_title_smart(pw_soup, org_name)
+                        latest_title, notice_link = extract_title_and_link_smart(pw_soup, org_name, target_url)
 
             if not latest_title or not is_valid_real_notice(latest_title):
                 print("  ℹ️ 최신 공고 제목을 찾지 못함 (디자인 개편 감지 가능성)")
@@ -546,7 +559,8 @@ def main():
                 print("  ✅ 변동 없음")
             else:
                 print(f"  📢 [신규 공고 발견!] {latest_title}")
-                sent_count = notify_matching_subscribers(latest_title, org_name, region, category, target_url)
+                print(f"  🔗 개별 상세 링크: {notice_link}")
+                sent_count = notify_matching_subscribers(latest_title, org_name, region, category, notice_link)
                 notice_history[target_url] = latest_title
                 total_notifications += sent_count
 
