@@ -352,7 +352,7 @@ def is_valid_real_notice(title):
     return True
 
 def make_full_url(a_elem, target_url):
-    """자바스크립트(fn_egov...) 및 일반 href 링크를 개별 상세페이지 URL로 스마트 변환"""
+    """표준 href 주소 및 자바스크립트 글번호(nttNo 등)를 범용 상세페이지 URL로 스마트 전환"""
     if not a_elem:
         return target_url
     
@@ -360,22 +360,23 @@ def make_full_url(a_elem, target_url):
     onclick = a_elem.get("onclick", "").strip()
     attr_str = href + " " + onclick
 
-    # 1. 표준 웹 주소인 경우
-    if href and not href.startswith("javascript") and href != "#" and href != "none":
+    # 1. 일반 웹 주소(href) 형태인 경우
+    if href and not href.startswith("javascript") and href not in ["#", "#none", "#LINK", "none"]:
         return urljoin(target_url, href)
 
-    # 2. 자바스크립트 함수(javascript:fn_egov...('8951'))로 연결된 경우 ID 자동 추출
+    # 2. 자바스크립트 함수(javascript:fn_egov...('8951'))로 연결된 경우 숫자 ID 추출
     numbers = re.findall(r"['\"](\d+)['\"]", attr_str) or re.findall(r"\b(\d{4,10})\b", attr_str)
     
     if numbers:
         num_id = numbers[0]
         
-        # 경북테크노파크 및 전자정부프레임워크 게시판 개별 주소 조합
+        # 경북테크노파크 (gbtp.or.kr) 등 전자정부프레임워크 개별 상세주소 생성
         if "gbtp.or.kr" in target_url or "board.do" in target_url:
             bbs_id_match = re.search(r"bbsId=([^&]+)", target_url)
             bbs_id = bbs_id_match.group(1) if bbs_id_match else "BBSMSTR_000000000021"
             return f"https://www.gbtp.or.kr/user/boardDetail.do?bbsId={bbs_id}&nttNo={num_id}"
         
+        # 범용 URL 파라미터 치환
         if "seq=" in target_url:
             return re.sub(r"seq=[^&]+", f"seq={num_id}", target_url)
         elif "nttNo=" in target_url:
