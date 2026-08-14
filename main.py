@@ -352,7 +352,7 @@ def is_valid_real_notice(title):
     return True
 
 def make_full_url(a_elem, target_url):
-    """표준 href 주소 및 자바스크립트 글번호(nttNo 등)를 범용 상세페이지 URL로 스마트 전환"""
+    """표준 href 및 지자체별 컨트롤러 전환(List -> Detail/View)을 통한 100% 개별 상세페이지 URL 생성"""
     if not a_elem:
         return target_url
     
@@ -360,30 +360,84 @@ def make_full_url(a_elem, target_url):
     onclick = a_elem.get("onclick", "").strip()
     attr_str = href + " " + onclick
 
-    # 1. 일반 웹 주소(href) 형태인 경우
+    # 1. 표준 웹 주소(href) 형태인 경우
     if href and not href.startswith("javascript") and href not in ["#", "#none", "#LINK", "none"]:
-        return urljoin(target_url, href)
+        full = urljoin(target_url, href)
+        if "NR_list.do" in full:
+            full = full.replace("NR_list.do", "NR_view.do")
+        elif "selectPageList.do" in full:
+            full = full.replace("selectPageList.do", "selectPageDetail.do")
+        elif "boardList.do" in full:
+            full = full.replace("boardList.do", "boardDetail.do")
+        elif "bepa.kr" in full and "idx=" in full and "view=" not in full:
+            full += "&view=view"
+        return full
 
-    # 2. 자바스크립트 함수(javascript:fn_egov...('8951'))로 연결된 경우 숫자 ID 추출
+    # 2. 자바스크립트 함수(javascript:fn_view('123'))로 연결된 경우 숫자 ID 추출
     numbers = re.findall(r"['\"](\d+)['\"]", attr_str) or re.findall(r"\b(\d{4,10})\b", attr_str)
     
     if numbers:
         num_id = numbers[0]
-        
-        # 경북테크노파크 (gbtp.or.kr) 등 전자정부프레임워크 개별 상세주소 생성
+
+        # A. 경남투자경제진흥원 (giba.or.kr)
+        if "giba.or.kr" in target_url:
+            base_url = target_url.replace("NR_list.do", "NR_view.do")
+            bbs_cd_match = re.search(r"bbsCd=(\d+)", target_url)
+            bbs_cd = bbs_cd_match.group(1) if bbs_cd_match else "11"
+            return f"https://giba.or.kr/fe/bizinfo/bizannounce/NR_view.do?bbsCd={bbs_cd}&bizAnnoSeq={num_id}"
+
+        # B. 경기테크노파크 (gtp.or.kr)
+        if "gtp.or.kr" in target_url:
+            base_url = target_url.replace("selectPageList.do", "selectPageDetail.do")
+            bbs_id_match = re.search(r"bbsId=([^&]+)", target_url)
+            bbs_id = bbs_id_match.group(1) if bbs_id_match else "BBSMSTR_000000000001"
+            return f"https://www.gtp.or.kr/gtp/selectPageDetail.do?bbsId={bbs_id}&nttNo={num_id}"
+
+        # C. 인천테크노파크 (itp.or.kr)
+        if "itp.or.kr" in target_url:
+            if "board/list.jsp" in target_url:
+                base_url = target_url.replace("board/list.jsp", "board/view.jsp")
+                return f"{base_url}&data_sid={num_id}"
+            elif "list.do" in target_url:
+                base_url = target_url.replace("list.do", "view.do")
+                return f"{base_url}&idx={num_id}"
+            else:
+                base_url = target_url.replace("list", "view")
+                delim = "&" if "?" in base_url else "?"
+                return f"{base_url}{delim}data_sid={num_id}"
+
+        # D. 경북테크노파크 (gbtp.or.kr)
         if "gbtp.or.kr" in target_url or "board.do" in target_url:
             bbs_id_match = re.search(r"bbsId=([^&]+)", target_url)
             bbs_id = bbs_id_match.group(1) if bbs_id_match else "BBSMSTR_000000000021"
             return f"https://www.gbtp.or.kr/user/boardDetail.do?bbsId={bbs_id}&nttNo={num_id}"
-        
-        # 범용 URL 파라미터 치환
-        if "seq=" in target_url:
-            return re.sub(r"seq=[^&]+", f"seq={num_id}", target_url)
-        elif "nttNo=" in target_url:
-            return re.sub(r"nttNo=[^&]+", f"nttNo={num_id}", target_url)
+
+        # E. 부산경제진흥원 (bepa.kr)
+        if "bepa.kr" in target_url:
+            base_url = target_url.split('?')[0]
+            no_match = re.search(r"no=(\d+)", target_url)
+            no_param = f"no={no_match.group(1)}&" if no_match else ""
+            items_match = re.search(r"items=([^&]+)", target_url)
+            items_param = f"&items={items_match.group(1)}" if items_match else ""
+            return f"{base_url}?{no_param}idx={num_id}&view=view{items_param}"
+
+        # F. 범용 컨트롤러 변환 및 파라미터 조합 (List -> Detail/View)
+        base_url = target_url
+        base_url = base_url.replace("selectPageList.do", "selectPageDetail.do")
+        base_url = base_url.replace("selectList.do", "selectDetail.do")
+        base_url = base_url.replace("boardList.do", "boardDetail.do")
+        base_url = base_url.replace("NR_list.do", "NR_view.do")
+        base_url = base_url.replace("/list.jsp", "/view.jsp")
+
+        if "seq=" in base_url:
+            return re.sub(r"seq=[^&]+", f"seq={num_id}", base_url)
+        elif "nttNo=" in base_url:
+            return re.sub(r"nttNo=[^&]+", f"nttNo={num_id}", base_url)
+        elif "idx=" in base_url:
+            return re.sub(r"idx=[^&]+", f"idx={num_id}", base_url)
             
-        delim = "&" if "?" in target_url else "?"
-        return f"{target_url}{delim}nttNo={num_id}"
+        delim = "&" if "?" in base_url else "?"
+        return f"{base_url}{delim}nttNo={num_id}"
 
     return target_url
 
