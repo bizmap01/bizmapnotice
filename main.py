@@ -8,11 +8,15 @@ import datetime
 import uuid
 import requests
 import pandas as pd
+import urllib3
 from urllib.parse import urljoin
 from curl_cffi import requests as cffi_requests
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 from supabase import create_client, Client
+
+# SSL 인증서 경고 메시지 출력 억제
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ==========================================
 # 1. 사용자 설정 및 API Key 정보
@@ -38,13 +42,11 @@ EXCEL_FILE = "crawling_targets_template.xlsx"
 HISTORY_FILE = "notice_history.json"
 DEV_ALERT_FILE = "dev_alert_history.json"
 
-# 🔥 8개 타일/동적 로딩 기관을 포함한 동적 탐색 타겟 목록
 DYNAMIC_ORGS = [
-    "제주테크노파크", "전남광주통합특별시 기업지원시스템", "경기도경제과학진흥원",
-    "소상공인24", "대구테크노파크", "경남테크노파크", "충북테크노파크", 
-    "전남테크노파크", "연구개발특구진흥재단", "대전일자리경제진흥원",
-    "강원특별자치도경제진흥원", "세종테크노파크", "전북특별자치도 경제통상진흥원",
-    "경상북도경제진흥원", "서울경제진흥원", "전북테크노파크"
+    "경북테크노파크", "대전일자리경제진흥원",
+    "소상공인24", "대구테크노파크", "경남테크노파크", "충북테크노파크",
+    "전남테크노파크", "세종테크노파크", "전북특별자치도 경제통상진흥원",
+    "서울경제진흥원", "전북테크노파크"
 ]
 
 PURE_SYSTEM_NOISE = {
@@ -52,7 +54,9 @@ PURE_SYSTEM_NOISE = {
     "바로가기", "홈으로", "저작권", "이메일", "익명신고", "인권침해", "정보공개", "부서별", "FAQ",
     "자주묻는질문", "이전", "다음", "목록", "검색", "다운로드", "전체", "TOP", "안내책자다운로드",
     "수출판로지원", "기업지원", "자금지원", "일자리지원", "기타지원", "모집중", "타온라인", "마감", "상세보기",
-    "진행중", "준비중", "종료", "접수중", "활용하세요. 자주 묻는 질문말씀하세요."
+    "진행중", "준비중", "종료", "접수중", "본문으로바로가기", "본문바로가기", "카카오톡알림신청", "알림신청",
+    "유관기관지원정보", "기업마당지원사업", "분야별지원사업", "지역별지원사업", "일정별지원사업",
+    "지원사업안내", "전체목록", "주요사업", "카카오톡알림"
 }
 
 # ==========================================
@@ -213,18 +217,15 @@ def send_kakao_alimtalk(to_phone, user_name, org_name, title, target_url):
         return False, str(e)
 
 def is_region_matching(user_region, notice_region, title):
-    """🔥 제목 기반 스마트 지역 매칭 검증 함수 (타 지역 오발송 완벽 차단)"""
+    """제목 기반 스마트 지역 매칭 검증 함수"""
     u_reg = user_region.replace("광역시", "").replace("특별자치시", "").replace("특별자치도", "").replace("도", "").replace("시", "").strip()
     
-    # 1. 유저 설정이 '전국'인 경우 무조건 수신
     if u_reg in ["전국", ""]:
         return True
         
-    # 2. 공고 지역 또는 제목에 유저 지역(예: 부산)이 포함되어 있다면 수신
     if u_reg in notice_region or u_reg in title:
         return True
         
-    # 3. API 등에서 공고 지역이 '전국'으로 기재되었으나 제목에 다른 지자체명이 명시되어 있는 경우 차단!
     if notice_region == "전국":
         other_regions = [
             "서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종",
@@ -234,7 +235,7 @@ def is_region_matching(user_region, notice_region, title):
         ]
         for reg in other_regions:
             if reg in title and u_reg not in title and u_reg not in reg and reg not in u_reg:
-                return False  # 타 지자체 전용 공고이므로 매칭에서 제외
+                return False
         return True
         
     return False
@@ -269,7 +270,6 @@ def notify_matching_subscribers(title, org_name, notice_region, category, target
         if not user_phone:
             continue
 
-        # 🔥 제목 기반 스마트 지역 매칭 검증 적용
         if is_region_matching(user_region, notice_region, title):
             if USE_KAKAO:
                 print(f"  💬 [{user_name}님 ({user_phone})] 매칭 ➔ 카카오 알림톡 발송 중...")
@@ -311,7 +311,6 @@ def fetch_cffi_with_retry(target_url, max_retries=2):
     return None
 
 def fetch_with_playwright(target_url, org_name=""):
-    """동적 자바스크립트 및 타일형 카드 레이아웃 렌더링 지원 Playwright 구동"""
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
@@ -319,7 +318,7 @@ def fetch_with_playwright(target_url, org_name=""):
             page = context.new_page()
             
             try:
-                page.goto(target_url, timeout=35000, wait_until="domcontentloaded")
+                page.goto(target_url, timeout=35000, wait_until="commit")
             except Exception:
                 pass
             
@@ -342,7 +341,7 @@ def fetch_with_playwright(target_url, org_name=""):
                 except Exception:
                     pass
 
-            time.sleep(3.5)  # 동적 카드/AJAX 데이터 렌더링 시간 확보
+            time.sleep(3.5)
             content = page.content()
 
             for frame in page.frames:
@@ -371,14 +370,19 @@ def clean_duplicate_text(text):
 def is_valid_real_notice(title):
     if not title or len(title) < 8:
         return False
-    if title in PURE_SYSTEM_NOISE:
+        
+    clean_t = title.replace(" ", "")
+    for noise in PURE_SYSTEM_NOISE:
+        if noise.replace(" ", "") in clean_t:
+            return False
+            
+    bad_keywords = ["바로가기", "알림신청", "유관기관", "기업마당지원", "분야별지원", "지역별지원", "일정별지원", "로그인", "회원가입", "마이페이지", "사이트맵", "개인정보", "조직도", "연혁"]
+    if any(bad in clean_t for bad in bad_keywords):
         return False
-    if any(noise in title for noise in ["소개", "인사말", "오시는길", "사이트맵", "개인정보", "조직도", "연혁"]):
-        return False
+        
     return True
 
 def make_full_url(a_elem, target_url):
-    """표준 href 및 지자체별 컨트롤러 전환(List -> Detail/View)을 통한 개별 상세페이지 URL 생성"""
     if not a_elem:
         return target_url
     
@@ -386,7 +390,10 @@ def make_full_url(a_elem, target_url):
     onclick = a_elem.get("onclick", "").strip()
     attr_str = href + " " + onclick
 
-    # 1. 표준 웹 주소(href) 형태인 경우
+    if any(invalid in href.lower() for invalid in ["kakaoalarm", "login", "mypage", "javascript:void", "#"]):
+        if not onclick or "javascript:void" in onclick:
+            return target_url
+
     if href and not href.startswith("javascript") and href not in ["#", "#none", "#LINK", "none"]:
         full = urljoin(target_url, href)
         if "NR_list.do" in full:
@@ -399,20 +406,17 @@ def make_full_url(a_elem, target_url):
             full += "&view=view"
         return full
 
-    # 2. 자바스크립트 함수(javascript:fn_view('123'))로 연결된 경우 숫자 ID 추출
     numbers = re.findall(r"['\"](\d+)['\"]", attr_str) or re.findall(r"\b(\d{4,10})\b", attr_str)
     
     if numbers:
         num_id = numbers[0]
 
         if "giba.or.kr" in target_url:
-            base_url = target_url.replace("NR_list.do", "NR_view.do")
             bbs_cd_match = re.search(r"bbsCd=(\d+)", target_url)
             bbs_cd = bbs_cd_match.group(1) if bbs_cd_match else "11"
             return f"https://giba.or.kr/fe/bizinfo/bizannounce/NR_view.do?bbsCd={bbs_cd}&bizAnnoSeq={num_id}"
 
         if "gtp.or.kr" in target_url:
-            base_url = target_url.replace("selectPageList.do", "selectPageDetail.do")
             bbs_id_match = re.search(r"bbsId=([^&]+)", target_url)
             bbs_id = bbs_id_match.group(1) if bbs_id_match else "BBSMSTR_000000000001"
             return f"https://www.gtp.or.kr/gtp/selectPageDetail.do?bbsId={bbs_id}&nttNo={num_id}"
@@ -462,99 +466,98 @@ def make_full_url(a_elem, target_url):
     return target_url
 
 def extract_title_and_link_smart(soup, org_name, target_url):
-    """🔥 미수집 8개 기관 포함 전체 사이트 맞춤 공고 제목 및 링크 파서"""
+    """노이즈 태그 사전 제거 후 핀포인트 공고 제목 및 링크 수집"""
     unwanted_selectors = [
         "header", "footer", "nav", "#header", "#footer", "#gnb", "#lnb", "#snb",
         ".header", ".footer", ".gnb", ".lnb", ".snb", ".sidebar", ".top_menu",
-        ".site_map", ".util_menu", "#sidebar", ".foot_area", ".location", ".breadcrumb"
+        ".site_map", ".util_menu", "#sidebar", ".foot_area", ".location", ".breadcrumb",
+        "#skipNav", "#skip_nav", ".skip_nav", ".skipNav", ".skip", "#skip",
+        ".quick_menu", ".quick", ".floating", "#quickMenu", ".sba_quick", ".floating_banner",
+        "[href*='javascript:void']", "[href*='#cont']", "[href*='#skip']", "[href*='KakaoAlarm']", "[href*='login']"
     ]
     for sel in unwanted_selectors:
         for tag in soup.select(sel):
             tag.decompose()
 
-    # 1. 경상북도경제진흥원 (타일/카드형)
+    # 1. 경상북도경제진흥원
     if "경상북도경제진흥원" in org_name:
-        for item in soup.select(".sub_biz_list li, .card_box, .biz_list li, div.card, li, div"):
-            a_tag = item.select_one("a.title, dt a, p.title a, .tit a, a")
-            if a_tag:
-                txt = clean_duplicate_text(a_tag.text)
-                if is_valid_real_notice(txt):
-                    return txt, make_full_url(a_tag, target_url)
+        for item in soup.select(".gallery-title, .gallery_title, .gallery-item, .sub_biz_list li, .card_box, .biz_list li, article, .item"):
+            a_tag = item.find("a") or item.find_parent("a")
+            raw = item.get_text(" ", strip=True)
+            raw = re.sub(r'^([가-힣]{2,10}(지원|육성|사업))?\s*(진행중|모집중|접수중|마감|종료|준비중)?\s*', '', raw)
+            txt = clean_duplicate_text(raw)
+            if a_tag and is_valid_real_notice(txt):
+                return txt, make_full_url(a_tag, target_url)
 
-    # 2. 강원특별자치도경제진흥원 (그누보드 표)
+    # 2. 강원특별자치도경제진흥원
     if "강원특별자치도" in org_name:
-        for tr in soup.select(".td_subject, .bo_tit, tbody tr, table tr"):
-            a_tag = tr.select_one("a")
-            if a_tag:
-                txt = clean_duplicate_text(a_tag.text)
-                txt = re.sub(r'^\[.*?\]\s*', '', txt).strip()
-                if is_valid_real_notice(txt):
-                    return txt, make_full_url(a_tag, target_url)
+        for node in soup.select(".bo_tit a, td.td_subject a, .list_subject a, .subject a, .item_subject a"):
+            txt = re.sub(r'^\[.*?\]\s*', '', clean_duplicate_text(node.get_text())).strip()
+            if is_valid_real_notice(txt):
+                return txt, make_full_url(node, target_url)
 
-    # 3. 제주테크노파크 (동적 로딩 표)
-    if "제주테크노파크" in org_name:
-        for tr in soup.select("tbody tr, table tr"):
-            a_tag = tr.select_one("td:nth-child(4) a, td.al a, td.subject a, td a")
-            if a_tag:
-                txt = clean_duplicate_text(a_tag.text)
-                if is_valid_real_notice(txt) and not txt.isdigit():
-                    return txt, make_full_url(a_tag, target_url)
+    # 3. 경북테크노파크 (태그 정밀 보완)
+    if "경북테크노파크" in org_name:
+        for a in soup.select("a[href*='boardDetail.do'], a[onclick*='fn_egov_inqire_notice'], .bbs_list td.subject a, .board_list td a, table tbody tr td a"):
+            txt = clean_duplicate_text(a.get_text(" ", strip=True))
+            if is_valid_real_notice(txt) and not txt.isdigit():
+                return txt, make_full_url(a, target_url)
 
-    # 4. 전남광주통합특별시 기업지원시스템 (상자형 목록)
-    if "전남광주통합" in org_name:
-        for item in soup.select("div.list_item, div.item, li, div"):
-            a_tag = item.select_one("a.title, a.tit, td.left a, a")
-            text_cand = item.get_text(strip=True)
-            if "모집일자" in text_cand or "접수일자" in text_cand or a_tag:
-                if a_tag:
-                    txt = clean_duplicate_text(a_tag.text)
-                    txt = re.sub(r'^\[.*?\]\s*', '', txt).strip()
-                    if is_valid_real_notice(txt) and not any(kw in txt for kw in ["모집일자", "접수일자", "상세보기"]):
-                        return txt, make_full_url(a_tag, target_url)
+    # 4. 대전일자리경제진흥원 (태그 정밀 보완)
+    if "대전일자리" in org_name:
+        for a in soup.select("a[href*='TSK_PBNC_ID'], a[href*='form.tab'], a[href*='view'], .b-cont a, .board_list li a, .bbs_list tbody tr a, .list_item a"):
+            txt = re.sub(r'^\[.*?\]\s*', '', clean_duplicate_text(a.get_text(" ", strip=True))).strip()
+            if is_valid_real_notice(txt) and len(txt) >= 10 and re.search(r'(공고|모집|지원사업|선정|참여)', txt):
+                return txt, make_full_url(a, target_url)
 
-    # 5. 전북테크노파크 (표)
+    # 5. 전북테크노파크
     if "전북테크노파크" in org_name:
-        for tr in soup.select("tbody tr, table tr, .board_list li"):
-            a_tag = tr.select_one("td.subject a, td.title a, td.left a, td a, a")
+        for tr in soup.select("tbody tr, table tr"):
+            a_tag = tr.select_one("td.subject a, td.title a, td.left a, td:nth-child(2) a, a")
             if a_tag:
                 txt = clean_duplicate_text(a_tag.text)
                 txt = re.sub(r'^\[.*?\]\s*', '', txt).strip()
                 if is_valid_real_notice(txt):
                     return txt, make_full_url(a_tag, target_url)
 
-    # 6. 경기도경제과학진흥원 (타일/리스트)
+    # 6. 경기도경제과학진흥원
     if "경기도경제과학" in org_name or "경기기업비서" in org_name:
-        for card in soup.select(".prj_list_box, .card_item, ul.list li, .list_box, div.card, div, li"):
-            a_tag = card.select_one(".tit a, a.title, dt a, h4 a, a")
+        for card in soup.select(".card-body, .card, .prj_list_box, .card_item, ul.list li, .list_box li"):
+            a_tag = card.select_one(".tit a, a.title, dt a, h4 a, a.prj_name, a") or card.find_parent("a")
             if a_tag:
-                txt = clean_duplicate_text(a_tag.text)
-                if is_valid_real_notice(txt) and "검색" not in txt:
+                txt = clean_duplicate_text(a_tag.get_text(" ", strip=True))
+                if is_valid_real_notice(txt):
                     return txt, make_full_url(a_tag, target_url)
 
-    # 7. 서울경제진흥원 (타일형 Grid)
+    # 7. 서울경제진흥원
     if "서울경제진흥원" in org_name:
-        for card in soup.select(".company_support_list li, .card_box, div.card, dt, li, div"):
+        for card in soup.select(".company_support_list li, .card_box, div.card_inner"):
             a_tag = card.select_one("a.title, dt a, h4 a, .tit a, a")
             if a_tag:
                 txt = clean_duplicate_text(a_tag.text)
                 if is_valid_real_notice(txt):
                     return txt, make_full_url(a_tag, target_url)
 
-    # 8. 연구개발특구진흥재단 (타일형 Grid)
+    # 8. 연구개발특구진흥재단
     if "연구개발특구" in org_name:
-        for item in soup.select(".business_list .item, .card_inner, div, li, article, section"):
-            a_tag = item.select_one("a.title, .tit a, dt a, a")
-            text_cand = item.get_text(strip=True)
-            if "~" in text_cand and ("2026" in text_cand or "2027" in text_cand or "2025" in text_cand):
-                if a_tag:
-                    txt = clean_duplicate_text(a_tag.text)
-                    txt = re.sub(r'^\[.*?\]\s*', '', txt).strip()
-                    if is_valid_real_notice(txt) and not any(n in txt for n in ["~", "조회수", "상세보기", "진행중", "마감"]):
-                        return txt, make_full_url(a_tag, target_url)
-                lines = [clean_duplicate_text(l) for l in text_cand.split('\n') if len(l.strip()) > 8]
-                for l in lines:
-                    if is_valid_real_notice(l) and not any(n in l for n in ["~", "조회수", "상세보기", "진행중", "마감"]):
-                        return l, make_full_url(a_tag, target_url)
+        for item in soup.select(".board_list li, .bbs_list li, ul.lst li, .list li, ul li, li, table tbody tr"):
+            links = item.find_all("a")
+            if not links:
+                continue
+            full = item.get_text(" ", strip=True)
+            if "이전 사업공고" in full or "다음 사업공고" in full:
+                continue
+            cleaned = re.sub(r'(자세히보기|진행중|접수중|마감|준비중|종료|URL\s*공유|프린트|페이스북|트위터|공유하기)', ' ', full)
+            cleaned = re.sub(r'20\d{2}[-.]\d{1,2}[-.]\d{1,2}\s*~?\s*(20\d{2}[-.]\d{1,2}[-.]\d{1,2})?', ' ', cleaned)
+            cleaned = re.sub(r'^\s*(기술이전[·]?사업화|해외진출|투[·]?융자[ ·]?연계|교육[·]?컨설팅|사업화|정책자금|R&D|기타|투자연계)\s*', '', cleaned)
+            txt = clean_duplicate_text(cleaned.strip())
+            if is_valid_real_notice(txt) and len(txt) >= 10 and re.search(r'(공고|모집|사업|지원|참여)', txt):
+                detail_a = None
+                for a in links:
+                    if "자세히보기" in a.get_text() or a.get("href", "") not in ("", "#", "#none"):
+                        detail_a = a
+                        break
+                return txt, make_full_url(detail_a or links[0], target_url)
 
     # 범용 표준 표/리스트 탐색
     for tr in soup.select("tbody tr, table tr"):
@@ -564,11 +567,18 @@ def extract_title_and_link_smart(soup, org_name, target_url):
             if is_valid_real_notice(txt):
                 return txt, make_full_url(a_tag, target_url)
 
-    for a in soup.select(".kboard-list-title a, .kboard-title a, .pms-board-list td a, .bbs_list td a, .board_list a, ul.board_list li a, div.item a"):
+    for a in soup.select(".kboard-list-title a, .kboard-title a, .pms-board-list td a, .bbs_list td a, .board_list a, ul.board_list li a"):
         txt = clean_duplicate_text(a.text)
         if is_valid_real_notice(txt):
             if "javascript" not in txt.lower():
                 return txt, make_full_url(a, target_url)
+
+    # 범용 카드/타일형 안전망
+    for node in soup.select("li a, article a, .item a, .card a, [class*='card'] a, [class*='item'] a"):
+        raw = node.get_text(" ", strip=True)
+        txt = re.sub(r'^\[.*?\]\s*', '', clean_duplicate_text(raw)).strip()
+        if is_valid_real_notice(txt) and re.search(r'(공고|모집|지원사업|참여기업|선정|신청|접수|사업|모집공고)', txt):
+            return txt, make_full_url(node, target_url)
 
     return None, target_url
 
@@ -650,6 +660,148 @@ def fetch_bizinfo_api(notice_history):
         print("  ✅ [기업마당] 최신 공고 변동 없음")
     return sent_total
 
+def fetch_jejutp_api(notice_history):
+    """제주테크노파크: SPA(자바스크립트). ① JSON API 시도 → ② 실패 시 Playwright 정밀 파싱"""
+    print("\n🌐 [API] 제주테크노파크 사업공고 수집 중...")
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "X-Requested-With": "XMLHttpRequest",
+        "Referer": "https://www.jejutp.or.kr/board/business",
+    }
+    api_candidates = [
+        "https://www.jejutp.or.kr/board/business/list?keyword=&page=0&size=30&cate=",
+        "https://www.jejutp.or.kr/board/business/list?keyword=&pageNumber=0&size=30&cate=",
+        "https://www.jejutp.or.kr/api/board/business/list?keyword=&page=0&size=30&cate=",
+    ]
+    sent_total = 0
+    title, detail = None, None
+
+    try:
+        data = None
+        for api in api_candidates:
+            try:
+                res = requests.get(api, headers=headers, timeout=10, verify=False)
+                if res.status_code == 200 and res.text.strip().startswith(("{", "[")):
+                    data = res.json()
+                    break
+            except Exception:
+                continue
+
+        if data is not None:
+            items = None
+            if isinstance(data, list):
+                items = data
+            elif isinstance(data, dict):
+                for k in ("content", "list", "data", "items", "rows", "result", "resultList"):
+                    v = data.get(k)
+                    if isinstance(v, list) and v:
+                        items = v
+                        break
+                    if isinstance(v, dict):
+                        for k2 in ("content", "list", "data"):
+                            if isinstance(v.get(k2), list) and v[k2]:
+                                items = v[k2]
+                                break
+                    if items:
+                        break
+            if items:
+                first = items[0]
+                anno = first.get("anno", first) if isinstance(first, dict) else {}
+                cand = clean_duplicate_text(str(
+                    anno.get("annoName") or anno.get("title") or anno.get("subject") or ""
+                ))
+                anno_id = (anno.get("annoId") or anno.get("id") or anno.get("seq")
+                           or first.get("id") or first.get("annoId") or "")
+                if is_valid_real_notice(cand):
+                    title = cand
+                    detail = (f"https://www.jejutp.or.kr/board/business/detail/{anno_id}"
+                              if anno_id else "https://www.jejutp.or.kr/board/business")
+
+        if not title:
+            print("  ↪️ [제주TP] API 미확인 → Playwright 렌더링으로 재시도")
+            html = fetch_with_playwright("https://www.jejutp.or.kr/board/business", "제주테크노파크")
+            if html:
+                jsoup = BeautifulSoup(html, "html.parser")
+                for a in jsoup.select("a[href*='/board/business/detail']"):
+                    raw = clean_duplicate_text(a.get_text(" ", strip=True))
+                    # 🔥 부가 텍스트(숫자ID, D-108, 접수여부, 날짜 등) 완벽 제거 정규식
+                    t = re.sub(r'^\s*\d+\s*', '', raw)
+                    t = re.sub(r'^\s*D-\s*\d+\s*', '', t)
+                    t = re.sub(r'^\s*(마감|D-\d+|접수중|신청가능|모집중|진행중|준비중|종료)\s*', '', t)
+                    t = re.sub(r'^\s*(기타|교육|사업화|정책자금|R&D|자금|수출|판로|창업|경영|기술|인력)\s+', '', t)
+                    t = re.sub(r'\s*20\d{2}[-.]\d{1,2}[-.]\d{1,2}.*$', '', t)
+                    t = re.sub(r'\s*(신청가능|접수중|마감|모집중|진행중|접수여부|진행상태|접수시작일|접수종료일).*$', '', t)
+                    t = clean_duplicate_text(t.strip())
+                    if is_valid_real_notice(t):
+                        title = t
+                        detail = urljoin("https://www.jejutp.or.kr", a.get("href", "").split("?")[0])
+                        break
+
+        if not title:
+            print("  ⚠️ [제주TP] 공고를 찾지 못함")
+            return 0
+
+        key = "jejutp_latest"
+        if notice_history.get(key) == title:
+            print(f"  ✅ [제주TP] 변동 없음 (최신: {title[:30]}...)")
+        else:
+            print(f"  📢 [제주TP 신규 공고 발견!] {title}")
+            print(f"  🔗 {detail}")
+            sent_total = notify_matching_subscribers(title, "제주테크노파크", "제주", "사업공고", detail)
+            notice_history[key] = title
+    except Exception as e:
+        print(f"  ⚠️ [제주TP] 오류: {e}")
+    return sent_total
+
+def fetch_gjbizinfo_api(notice_history):
+    """전남광주통합 기업지원시스템: 목록을 getOnlineList.do POST로 가져옴"""
+    print("\n🌐 [API] 전남광주통합 기업지원시스템 수집 중...")
+    api = "https://www.gjbizinfo.or.kr/getOnlineList.do"
+    payload = {
+        "pageId": "www48",
+        "movePage": "",
+        "searchSup": "",
+        "sosang": "N",
+        "searchTp": "B",
+        "searchQuery": "",
+    }
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "X-Requested-With": "XMLHttpRequest",
+        "Referer": "https://www.gjbizinfo.or.kr/online.do?pageId=www48",
+    }
+    sent_total = 0
+    try:
+        res = requests.post(api, data=payload, headers=headers, timeout=10, verify=False)
+        items = res.json().get("dataArr", {}).get("getOnlineList", [])
+        if not items:
+            print("  ⚠️ [전남광주통합] 목록이 비어있음")
+            return 0
+
+        newest = items[0]
+        title = clean_duplicate_text(str(newest.get("ONLINE_NAME", "")).strip())
+        sn = newest.get("ONLINE_SN")
+        status = newest.get("MOJIB", "")
+        detail = f"https://www.gjbizinfo.or.kr/onlineView.do?pageId=www48&online_sn={sn}"
+
+        if not is_valid_real_notice(title):
+            print(f"  ⚠️ [전남광주통합] 제목 확인 필요")
+            return 0
+
+        key = "gjbizinfo_latest"
+        if notice_history.get(key) == title:
+            print(f"  ✅ [전남광주통합] 변동 없음 (최신: {title[:30]}...)")
+        else:
+            print(f"  📢 [전남광주통합 신규 공고 발견!] [{status}] {title}")
+            print(f"  🔗 {detail}")
+            sent_total = notify_matching_subscribers(
+                title, "전남광주통합특별시 기업지원시스템", "전남", "지원사업정보", detail
+            )
+            notice_history[key] = title
+    except Exception as e:
+        print(f"  ⚠️ [전남광주통합] API 오류: {e}")
+    return sent_total
+
 # ==========================================
 # 6. 메인 실행 로직
 # ==========================================
@@ -678,7 +830,8 @@ def main():
         category = str(row.get('게시판 구분', '공고')).strip()
         target_url = str(row.get('게시판 URL (상세주소)', '')).strip()
 
-        if any(keyword in org_name for keyword in ["K-Startup", "기업마당"]):
+        if any(keyword in org_name for keyword in
+               ["K-Startup", "기업마당", "제주테크노파크", "전남광주통합"]):
             continue
 
         if not target_url or target_url == 'nan':
@@ -731,6 +884,8 @@ def main():
 
     total_notifications += fetch_kstartup_api(notice_history)
     total_notifications += fetch_bizinfo_api(notice_history)
+    total_notifications += fetch_jejutp_api(notice_history)
+    total_notifications += fetch_gjbizinfo_api(notice_history)
 
     save_json_file(HISTORY_FILE, notice_history)
     save_json_file(DEV_ALERT_FILE, dev_history)
