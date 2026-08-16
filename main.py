@@ -24,14 +24,13 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 SOLAPI_KEY = "NCSOCR94THGOMHSW"
 SOLAPI_SECRET = "6YH0DTGRHVDXT4HU3RS6T0TDRINDFXH4"
 
-# 💡 카카오 알림톡 가동
 USE_KAKAO = True
 
 # 기존 승인 단건 템플릿 유지 (3일 테스트용)
 SOLAPI_PF_ID = "KA01PF260805090058574q8wFwsR3MUx"
 SOLAPI_TEMPLATE_ID = "KA01TP260805090641453jRsTCdFoBOl"
 
-MY_PHONE = "01084687138"  # 발신번호 및 개발자 비상 경고 수신 번호
+MY_PHONE = "01084687138"
 DATA_GO_KEY = "5df6886cdde7cb88e1c3e7e0e7c555002747947bf772546c112b028a77a8b81b"
 
 # Supabase 연동 정보
@@ -49,6 +48,7 @@ DYNAMIC_ORGS = [
     "서울경제진흥원", "전북테크노파크"
 ]
 
+# 🔥 시스템 노이즈 및 마감/선정결과 공고 차단 키워드
 PURE_SYSTEM_NOISE = {
     "로그인", "회원가입", "마이페이지", "사이트맵", "개인정보처리방침", "이용약관", "자세히보기",
     "바로가기", "홈으로", "저작권", "이메일", "익명신고", "인권침해", "정보공개", "부서별", "FAQ",
@@ -56,7 +56,9 @@ PURE_SYSTEM_NOISE = {
     "수출판로지원", "기업지원", "자금지원", "일자리지원", "기타지원", "모집중", "타온라인", "마감", "상세보기",
     "진행중", "준비중", "종료", "접수중", "본문으로바로가기", "본문바로가기", "카카오톡알림신청", "알림신청",
     "유관기관지원정보", "기업마당지원사업", "분야별지원사업", "지역별지원사업", "일정별지원사업",
-    "지원사업안내", "전체목록", "주요사업", "카카오톡알림"
+    "지원사업안내", "전체목록", "주요사업", "카카오톡알림",
+    # 선정 결과 및 합격자 발표 공고 필터링 키워드
+    "선정결과", "선정안내", "최종선정", "선정기업", "선정자", "합격자", "심사결과", "결과공고", "결과발표", "합격자발표"
 }
 
 # ==========================================
@@ -91,7 +93,7 @@ def get_solapi_headers():
     }
 
 def load_history_from_supabase():
-    """🔥 Supabase DB에서 과거 발송된 공고 목록을 세트로 로드 (GitHub Actions 초기화 대응)"""
+    """Supabase DB에서 과거 발송된 공고 목록을 세트로 로드"""
     sent_set = set()
     try:
         res = supabase.table("notification_logs").select("title, link").execute()
@@ -225,7 +227,6 @@ def send_kakao_alimtalk(to_phone, user_name, org_name, title, target_url):
         return False, str(e)
 
 def is_region_matching(user_region, notice_region, title):
-    """🔥 구/군 단위까지 확장된 타 지역 오발송 정밀 차단 함수"""
     u_reg = user_region.replace("광역시", "").replace("특별자치시", "").replace("특별자치도", "").replace("도", "").replace("시", "").strip()
     
     if u_reg in ["전국", ""]:
@@ -235,7 +236,6 @@ def is_region_matching(user_region, notice_region, title):
         return True
         
     if notice_region == "전국":
-        # 타 지역 지자체명 및 세부 구/군 단위 (수성알파시티 등 오발송 차단)
         other_regions = [
             "서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종",
             "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
@@ -252,7 +252,6 @@ def is_region_matching(user_region, notice_region, title):
     return False
 
 def notify_matching_subscribers(title, org_name, notice_region, category, target_url, sent_history):
-    """Supabase DB 유저 관심 조건 매칭 및 알림 발송 + DB 기록"""
     try:
         res = supabase.table("users").select("*").eq("subscription_status", "active").execute()
         users = res.data or []
@@ -304,7 +303,6 @@ def notify_matching_subscribers(title, org_name, notice_region, category, target
             else:
                 print(f"    ❌ 발송 실패: {err_msg}")
 
-    # 실행 중 메모리에도 즉시 등록
     sent_history.add(title)
     sent_history.add(target_url)
                 
@@ -383,6 +381,7 @@ def clean_duplicate_text(text):
     return text
 
 def is_valid_real_notice(title):
+    """🔥 모집 공고 유효성 및 마감/선정결과 제외 검증"""
     if not title or len(title) < 8:
         return False
         
@@ -391,7 +390,12 @@ def is_valid_real_notice(title):
         if noise.replace(" ", "") in clean_t:
             return False
             
-    bad_keywords = ["바로가기", "알림신청", "유관기관", "기업마당지원", "분야별지원", "지역별지원", "일정별지원", "로그인", "회원가입", "마이페이지", "사이트맵", "개인정보", "조직도", "연혁"]
+    bad_keywords = [
+        "바로가기", "알림신청", "유관기관", "기업마당지원", "분야별지원", "지역별지원", "일정별지원",
+        "로그인", "회원가입", "마이페이지", "사이트맵", "개인정보", "조직도", "연혁",
+        # 선정결과/합격자 공고 배제 키워드
+        "선정결과", "선정안내", "최종선정", "합격자발표", "심사결과", "결과발표", "결과공고", "선정기업"
+    ]
     if any(bad in clean_t for bad in bad_keywords):
         return False
         
@@ -819,7 +823,6 @@ def main():
         print(f"❌ 엑셀 파일 읽기 실패: {e}")
         return
 
-    # 🔥 Supabase에서 과거 발송된 모든 공고 이력을 가져옵니다.
     sent_history = load_history_from_supabase()
     dev_history = load_json_file(DEV_ALERT_FILE)
     total_notifications = 0
@@ -864,11 +867,9 @@ def main():
                         latest_title, notice_link = extract_title_and_link_smart(pw_soup, org_name, target_url)
 
             if not latest_title or not is_valid_real_notice(latest_title):
-                print("  ℹ️ 최신 공고 제목을 찾지 못함 (디자인 개편 감지 가능성)")
-                send_dev_warning(org_name, category, target_url, dev_history)
+                print("  ℹ️ 최신 공고 제목을 찾지 못함 (디자인 개편 감지 가능성 또는 결과/노이즈 공고 필터링)")
                 continue
 
-            # 🔥 DB 이력 대조: 이미 보낸 제목이거나 링크인 경우 즉시 스킵
             if latest_title in sent_history or notice_link in sent_history:
                 print("  ✅ 변동 없음 (이미 발송 완료된 공고)")
             else:
