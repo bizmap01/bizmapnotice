@@ -27,8 +27,9 @@ SOLAPI_SECRET = "6YH0DTGRHVDXT4HU3RS6T0TDRINDFXH4"
 # 💡 카카오 알림톡 가동
 USE_KAKAO = True
 
-SOLAPI_PF_ID = "KA01PF260805090058574q8wFwsR3MUx"          # 솔라피 카카오 발신프로필 키
-SOLAPI_TEMPLATE_ID = "KA01TP260805090641453jRsTCdFoBOl"  # 승인받으신 템플릿 ID
+# 기존 승인 단건 템플릿 유지 (3일 테스트용)
+SOLAPI_PF_ID = "KA01PF260805090058574q8wFwsR3MUx"
+SOLAPI_TEMPLATE_ID = "KA01TP260805090641453jRsTCdFoBOl"
 
 MY_PHONE = "01084687138"  # 발신번호 및 개발자 비상 경고 수신 번호
 DATA_GO_KEY = "5df6886cdde7cb88e1c3e7e0e7c555002747947bf772546c112b028a77a8b81b"
@@ -39,7 +40,6 @@ SUPABASE_KEY = "sb_publishable_P19tdkj74ibIy7Xdle2i4w_M1B1mhV_"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 EXCEL_FILE = "crawling_targets_template.xlsx"
-HISTORY_FILE = "notice_history.json"
 DEV_ALERT_FILE = "dev_alert_history.json"
 
 DYNAMIC_ORGS = [
@@ -60,7 +60,7 @@ PURE_SYSTEM_NOISE = {
 }
 
 # ==========================================
-# 2. 유틸리티 및 인증/경고 함수
+# 2. 유틸리티 및 Supabase DB 이력 조회 함수
 # ==========================================
 
 def load_excel_robust(file_path):
@@ -90,6 +90,25 @@ def get_solapi_headers():
         'Content-Type': 'application/json; charset=utf-8'
     }
 
+def load_history_from_supabase():
+    """🔥 Supabase DB에서 과거 발송된 공고 목록을 세트로 로드 (GitHub Actions 초기화 대응)"""
+    sent_set = set()
+    try:
+        res = supabase.table("notification_logs").select("title, link").execute()
+        if res.data:
+            for item in res.data:
+                raw_title = item.get("title", "")
+                clean_title = re.sub(r'^\[.*?\]\s*', '', raw_title).strip()
+                if clean_title:
+                    sent_set.add(clean_title)
+                link = item.get("link", "").strip()
+                if link:
+                    sent_set.add(link)
+        print(f"📦 Supabase DB에서 과거 발송 이력 {len(res.data)}건을 성공적으로 불러왔습니다.")
+    except Exception as e:
+        print(f"⚠️ Supabase 과거 이력 조회 실패: {e}")
+    return sent_set
+
 def load_json_file(file_path):
     if os.path.exists(file_path):
         try:
@@ -104,7 +123,6 @@ def save_json_file(file_path, data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 def send_dev_warning(org_name, category, target_url, dev_history):
-    """크롤링 오류 발생 시 개발자에게 긴급 비상 문자(LMS) 발송"""
     today_str = datetime.date.today().isoformat()
     if dev_history.get(target_url) == today_str:
         return
@@ -119,7 +137,6 @@ def send_dev_warning(org_name, category, target_url, dev_history):
         f"• 원인: 공고 제목 미수집 또는 디자인 개편 감지\n\n"
         f"🔗 확인 주소:\n{target_url}"
     )
-    
     payload = {
         "message": {
             "to": MY_PHONE,
@@ -128,7 +145,6 @@ def send_dev_warning(org_name, category, target_url, dev_history):
             "type": "LMS"
         }
     }
-    
     try:
         res = requests.post(solapi_url, headers=headers, json=payload, timeout=10)
         if res.status_code == 200:
@@ -141,10 +157,8 @@ def send_dev_warning(org_name, category, target_url, dev_history):
 # ==========================================
 
 def send_lms_message(to_phone, user_name, org_name, title, target_url):
-    """솔라피 LMS 장문 문자 발송 함수"""
     solapi_url = "https://api.solapi.com/messages/v4/send"
     headers = get_solapi_headers()
-    
     clean_phone = ''.join(filter(str.isdigit, str(to_phone)))
     
     msg = (
@@ -155,7 +169,6 @@ def send_lms_message(to_phone, user_name, org_name, title, target_url):
         f"• 제목: {title}\n\n"
         f"🔗 상세 공고 보기:\n{target_url}"
     )
-    
     payload = {
         "message": {
             "to": clean_phone,
@@ -164,7 +177,6 @@ def send_lms_message(to_phone, user_name, org_name, title, target_url):
             "type": "LMS"
         }
     }
-    
     try:
         res = requests.post(solapi_url, headers=headers, json=payload, timeout=10)
         if res.status_code == 200:
@@ -175,7 +187,6 @@ def send_lms_message(to_phone, user_name, org_name, title, target_url):
         return False, str(e)
 
 def send_kakao_alimtalk(to_phone, user_name, org_name, title, target_url):
-    """솔라피 카카오 알림톡 API 발송 함수"""
     solapi_url = "https://api.solapi.com/messages/v4/send"
     headers = get_solapi_headers()
     today_str = datetime.date.today().strftime('%Y.%m.%d')
@@ -188,7 +199,6 @@ def send_kakao_alimtalk(to_phone, user_name, org_name, title, target_url):
             "to": clean_phone,
             "from": MY_PHONE,
             "type": "ATA",
-            
             "kakaoOptions": {
                 "pfId": SOLAPI_PF_ID,
                 "templateId": SOLAPI_TEMPLATE_ID,
@@ -201,12 +211,10 @@ def send_kakao_alimtalk(to_phone, user_name, org_name, title, target_url):
                 },
                 "disableSms": False
             },
-            
             "subject": "[비즈맵] 신규 지원사업 공고 알림",
             "text": f"[비즈맵] 신규 지원공고 알림\n\n안녕하세요, {user_name or '대표'}님!\n\n본 알림은 회원님께서 신청하신 맞춤 알림 서비스에 따라, 설정하신 조건에 해당하는 신규 지원사업 공고가 등록되었을 때 발송되는 안내 메시지입니다.\n\n• 지원기관: {org_name}\n• 공고제목: {title}\n• 등록일자: {today_str}\n\n상세보기: {target_url}"
         }
     }
-    
     try:
         res = requests.post(solapi_url, headers=headers, json=payload, timeout=10)
         if res.status_code == 200:
@@ -217,7 +225,7 @@ def send_kakao_alimtalk(to_phone, user_name, org_name, title, target_url):
         return False, str(e)
 
 def is_region_matching(user_region, notice_region, title):
-    """제목 기반 스마트 지역 매칭 검증 함수"""
+    """🔥 구/군 단위까지 확장된 타 지역 오발송 정밀 차단 함수"""
     u_reg = user_region.replace("광역시", "").replace("특별자치시", "").replace("특별자치도", "").replace("도", "").replace("시", "").strip()
     
     if u_reg in ["전국", ""]:
@@ -227,9 +235,12 @@ def is_region_matching(user_region, notice_region, title):
         return True
         
     if notice_region == "전국":
+        # 타 지역 지자체명 및 세부 구/군 단위 (수성알파시티 등 오발송 차단)
         other_regions = [
             "서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종",
             "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
+            "수성", "달성", "해운대", "기장", "유성", "대덕", "강남", "서초", "송파",
+            "판교", "분당", "용인", "화성", "고양", "수원", "성남", "안양", "부천",
             "금산", "단양", "인제", "원주", "춘천", "강릉", "청주", "충주", "천안",
             "아산", "전주", "익산", "목포", "여수", "순천", "포항", "구미", "창원", "김해"
         ]
@@ -240,8 +251,8 @@ def is_region_matching(user_region, notice_region, title):
         
     return False
 
-def notify_matching_subscribers(title, org_name, notice_region, category, target_url):
-    """Supabase DB 유저 관심 조건 매칭 및 알림 발송"""
+def notify_matching_subscribers(title, org_name, notice_region, category, target_url, sent_history):
+    """Supabase DB 유저 관심 조건 매칭 및 알림 발송 + DB 기록"""
     try:
         res = supabase.table("users").select("*").eq("subscription_status", "active").execute()
         users = res.data or []
@@ -292,6 +303,10 @@ def notify_matching_subscribers(title, org_name, notice_region, category, target
                     print(f"    ⚠️ 로그 기록 주의: {log_err}")
             else:
                 print(f"    ❌ 발송 실패: {err_msg}")
+
+    # 실행 중 메모리에도 즉시 등록
+    sent_history.add(title)
+    sent_history.add(target_url)
                 
     return sent_count
 
@@ -466,7 +481,6 @@ def make_full_url(a_elem, target_url):
     return target_url
 
 def extract_title_and_link_smart(soup, org_name, target_url):
-    """노이즈 태그 사전 제거 후 핀포인트 공고 제목 및 링크 수집"""
     unwanted_selectors = [
         "header", "footer", "nav", "#header", "#footer", "#gnb", "#lnb", "#snb",
         ".header", ".footer", ".gnb", ".lnb", ".snb", ".sidebar", ".top_menu",
@@ -496,14 +510,14 @@ def extract_title_and_link_smart(soup, org_name, target_url):
             if is_valid_real_notice(txt):
                 return txt, make_full_url(node, target_url)
 
-    # 3. 경북테크노파크 (태그 정밀 보완)
+    # 3. 경북테크노파크
     if "경북테크노파크" in org_name:
         for a in soup.select("a[href*='boardDetail.do'], a[onclick*='fn_egov_inqire_notice'], .bbs_list td.subject a, .board_list td a, table tbody tr td a"):
             txt = clean_duplicate_text(a.get_text(" ", strip=True))
             if is_valid_real_notice(txt) and not txt.isdigit():
                 return txt, make_full_url(a, target_url)
 
-    # 4. 대전일자리경제진흥원 (태그 정밀 보완)
+    # 4. 대전일자리경제진흥원
     if "대전일자리" in org_name:
         for a in soup.select("a[href*='TSK_PBNC_ID'], a[href*='form.tab'], a[href*='view'], .b-cont a, .board_list li a, .bbs_list tbody tr a, .list_item a"):
             txt = re.sub(r'^\[.*?\]\s*', '', clean_duplicate_text(a.get_text(" ", strip=True))).strip()
@@ -573,7 +587,6 @@ def extract_title_and_link_smart(soup, org_name, target_url):
             if "javascript" not in txt.lower():
                 return txt, make_full_url(a, target_url)
 
-    # 범용 카드/타일형 안전망
     for node in soup.select("li a, article a, .item a, .card a, [class*='card'] a, [class*='item'] a"):
         raw = node.get_text(" ", strip=True)
         txt = re.sub(r'^\[.*?\]\s*', '', clean_duplicate_text(raw)).strip()
@@ -586,7 +599,7 @@ def extract_title_and_link_smart(soup, org_name, target_url):
 # 5. 공식 Open API 수집 함수들
 # ==========================================
 
-def fetch_kstartup_api(notice_history):
+def fetch_kstartup_api(sent_history):
     print("\n🌐 [공식 API] K-Startup 사업공고 수집 중...")
     url = f"https://apis.data.go.kr/B552735/kisedKstartupService01/getAnnouncementInformation01?serviceKey={DATA_GO_KEY}&page=1&perPage=10&returnType=json"
     sent_total = 0
@@ -609,21 +622,19 @@ def fetch_kstartup_api(notice_history):
                 if not is_valid_real_notice(title):
                     continue
 
-                key = f"kstartup_{title}"
-                if notice_history.get(key) != title:
-                    print(f"  📢 [K-Startup 신규 공고 발견!] {title}")
-                    sent_count = notify_matching_subscribers(title, "K-Startup", "전국", "창업지원", detail_url)
-                    notice_history[key] = title
-                    sent_total += sent_count
+                if title in sent_history or detail_url in sent_history:
+                    print("  ✅ [K-Startup] 최신 공고 변동 없음 (이미 발송 완료)")
                     break
                 else:
-                    print("  ✅ [K-Startup] 최신 공고 변동 없음")
+                    print(f"  📢 [K-Startup 신규 공고 발견!] {title}")
+                    sent_count = notify_matching_subscribers(title, "K-Startup", "전국", "창업지원", detail_url, sent_history)
+                    sent_total += sent_count
                     break
     except Exception as e:
         print(f"  ✅ [K-Startup] 예외 처리 완료 ({e})")
     return sent_total
 
-def fetch_bizinfo_api(notice_history):
+def fetch_bizinfo_api(sent_history):
     print("\n🌐 [공식 API] 기업마당 지원사업 수집 중...")
     url = f"https://apis.data.go.kr/1421000/bizinfo/pblancBsnsService?serviceKey={DATA_GO_KEY}&pageNo=1&numOfRows=10&dataType=json"
     sent_total = 0
@@ -646,22 +657,19 @@ def fetch_bizinfo_api(notice_history):
                 if not is_valid_real_notice(title):
                     continue
 
-                key = f"bizinfo_{title}"
-                if notice_history.get(key) != title:
-                    print(f"  📢 [기업마당 신규 공고 발견!] {title}")
-                    sent_count = notify_matching_subscribers(title, "기업마당", "전국", "중소기업지원", detail_url)
-                    notice_history[key] = title
-                    sent_total += sent_count
+                if title in sent_history or detail_url in sent_history:
+                    print("  ✅ [기업마당] 최신 공고 변동 없음 (이미 발송 완료)")
                     break
                 else:
-                    print("  ✅ [기업마당] 최신 공고 변동 없음")
+                    print(f"  📢 [기업마당 신규 공고 발견!] {title}")
+                    sent_count = notify_matching_subscribers(title, "기업마당", "전국", "중소기업지원", detail_url, sent_history)
+                    sent_total += sent_count
                     break
     except Exception:
         print("  ✅ [기업마당] 최신 공고 변동 없음")
     return sent_total
 
-def fetch_jejutp_api(notice_history):
-    """제주테크노파크: SPA(자바스크립트). ① JSON API 시도 → ② 실패 시 Playwright 정밀 파싱"""
+def fetch_jejutp_api(sent_history):
     print("\n🌐 [API] 제주테크노파크 사업공고 수집 중...")
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -724,7 +732,6 @@ def fetch_jejutp_api(notice_history):
                 jsoup = BeautifulSoup(html, "html.parser")
                 for a in jsoup.select("a[href*='/board/business/detail']"):
                     raw = clean_duplicate_text(a.get_text(" ", strip=True))
-                    # 🔥 부가 텍스트(숫자ID, D-108, 접수여부, 날짜 등) 완벽 제거 정규식
                     t = re.sub(r'^\s*\d+\s*', '', raw)
                     t = re.sub(r'^\s*D-\s*\d+\s*', '', t)
                     t = re.sub(r'^\s*(마감|D-\d+|접수중|신청가능|모집중|진행중|준비중|종료)\s*', '', t)
@@ -741,20 +748,17 @@ def fetch_jejutp_api(notice_history):
             print("  ⚠️ [제주TP] 공고를 찾지 못함")
             return 0
 
-        key = "jejutp_latest"
-        if notice_history.get(key) == title:
-            print(f"  ✅ [제주TP] 변동 없음 (최신: {title[:30]}...)")
+        if title in sent_history or detail in sent_history:
+            print(f"  ✅ [제주TP] 변동 없음 (이미 발송 완료: {title[:30]}...)")
         else:
             print(f"  📢 [제주TP 신규 공고 발견!] {title}")
             print(f"  🔗 {detail}")
-            sent_total = notify_matching_subscribers(title, "제주테크노파크", "제주", "사업공고", detail)
-            notice_history[key] = title
+            sent_total = notify_matching_subscribers(title, "제주테크노파크", "제주", "사업공고", detail, sent_history)
     except Exception as e:
         print(f"  ⚠️ [제주TP] 오류: {e}")
     return sent_total
 
-def fetch_gjbizinfo_api(notice_history):
-    """전남광주통합 기업지원시스템: 목록을 getOnlineList.do POST로 가져옴"""
+def fetch_gjbizinfo_api(sent_history):
     print("\n🌐 [API] 전남광주통합 기업지원시스템 수집 중...")
     api = "https://www.gjbizinfo.or.kr/getOnlineList.do"
     payload = {
@@ -788,16 +792,14 @@ def fetch_gjbizinfo_api(notice_history):
             print(f"  ⚠️ [전남광주통합] 제목 확인 필요")
             return 0
 
-        key = "gjbizinfo_latest"
-        if notice_history.get(key) == title:
-            print(f"  ✅ [전남광주통합] 변동 없음 (최신: {title[:30]}...)")
+        if title in sent_history or detail in sent_history:
+            print(f"  ✅ [전남광주통합] 변동 없음 (이미 발송 완료: {title[:30]}...)")
         else:
             print(f"  📢 [전남광주통합 신규 공고 발견!] [{status}] {title}")
             print(f"  🔗 {detail}")
             sent_total = notify_matching_subscribers(
-                title, "전남광주통합특별시 기업지원시스템", "전남", "지원사업정보", detail
+                title, "전남광주통합특별시 기업지원시스템", "전남", "지원사업정보", detail, sent_history
             )
-            notice_history[key] = title
     except Exception as e:
         print(f"  ⚠️ [전남광주통합] API 오류: {e}")
     return sent_total
@@ -817,12 +819,13 @@ def main():
         print(f"❌ 엑셀 파일 읽기 실패: {e}")
         return
 
-    notice_history = load_json_file(HISTORY_FILE)
+    # 🔥 Supabase에서 과거 발송된 모든 공고 이력을 가져옵니다.
+    sent_history = load_history_from_supabase()
     dev_history = load_json_file(DEV_ALERT_FILE)
     total_notifications = 0
 
     target_df = df[df['수집 여부'].astype(str).str.upper() == 'Y']
-    print(f"📊 총 {len(target_df)}개 기관 게시판 모니터링을 시작합니다...\n")
+    print(f"\n📊 총 {len(target_df)}개 기관 게시판 모니터링을 시작합니다...\n")
 
     for idx, row in target_df.iterrows():
         org_name = str(row.get('기관명', '알 수 없음')).strip()
@@ -865,15 +868,13 @@ def main():
                 send_dev_warning(org_name, category, target_url, dev_history)
                 continue
 
-            saved_title = notice_history.get(target_url, "")
-
-            if latest_title == saved_title:
-                print("  ✅ 변동 없음")
+            # 🔥 DB 이력 대조: 이미 보낸 제목이거나 링크인 경우 즉시 스킵
+            if latest_title in sent_history or notice_link in sent_history:
+                print("  ✅ 변동 없음 (이미 발송 완료된 공고)")
             else:
                 print(f"  📢 [신규 공고 발견!] {latest_title}")
                 print(f"  🔗 개별 상세 링크: {notice_link}")
-                sent_count = notify_matching_subscribers(latest_title, org_name, region, category, notice_link)
-                notice_history[target_url] = latest_title
+                sent_count = notify_matching_subscribers(latest_title, org_name, region, category, notice_link, sent_history)
                 total_notifications += sent_count
 
         except Exception as e:
@@ -882,16 +883,15 @@ def main():
             
         time.sleep(0.5)
 
-    total_notifications += fetch_kstartup_api(notice_history)
-    total_notifications += fetch_bizinfo_api(notice_history)
-    total_notifications += fetch_jejutp_api(notice_history)
-    total_notifications += fetch_gjbizinfo_api(notice_history)
+    total_notifications += fetch_kstartup_api(sent_history)
+    total_notifications += fetch_bizinfo_api(sent_history)
+    total_notifications += fetch_jejutp_api(sent_history)
+    total_notifications += fetch_gjbizinfo_api(sent_history)
 
-    save_json_file(HISTORY_FILE, notice_history)
     save_json_file(DEV_ALERT_FILE, dev_history)
     
     print(f"\n==========================================")
-    print(f"✨ 모니터링 완벽 완료! (총 맞춤 알림 발송: {total_notifications}건)")
+    print(f"✨ 모니터링 완벽 완료! (총 맞춤 알림 신규 발송: {total_notifications}건)")
     print(f"==========================================")
 
 if __name__ == "__main__":
