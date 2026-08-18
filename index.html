@@ -4,13 +4,63 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>비즈맵(Bizmap) - 지원사업 맞춤 카카오톡 알림</title>
-  <!-- BIZMAP 공식 파비콘 (초고화질 SVG 인라인 적용) -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%230F172A'/%3E%3Cpath d='M14 10H23C27.4183 10 31 13.134 31 17C31 20.866 27.4183 24 23 24H14V10Z' fill='url(%23g1)'/%3E%3Cpath d='M14 24H25C29.9706 24 34 27.134 34 31C34 34.866 29.9706 38 25 38H14V24Z' fill='url(%23g2)'/%3E%3Ccircle cx='22.5' cy='17' r='3' fill='%23FFFFFF'/%3E%3Cpath d='M23.5 34.5L29 29M29 29H25.5M29 29V32.5' stroke='%23FFFFFF' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cdefs%3E%3ClinearGradient id='g1' x1='14' y1='10' x2='31' y2='24' gradientUnits='userSpaceOnUse'%3E%3Cstop stop-color='%232563EB'/%3E%3Cstop offset='1' stop-color='%2306B6D4'/%3E%3C/linearGradient%3E%3ClinearGradient id='g2' x1='14' y1='24' x2='34' y2='38' gradientUnits='userSpaceOnUse'%3E%3Cstop stop-color='%231D4ED8'/%3E%3Cstop offset='1' stop-color='%232563EB'/%3E%3C/linearGradient%3E%3C/defs%3E%3C/svg%3E">
-  <!-- Supabase SDK -->
+  
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "name": "BIZMAP (비즈맵)",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web, Cloud",
+        "description": "중소벤처기업 및 소상공인을 위한 올인원 경영컨설팅 AI SaaS 플랫폼. 전국 41개 지자체 정부지원사업 실시간 맞춤 매칭, AI 사업계획서 생성, 경영 전략 수립 지원.",
+        "url": "https://www.bizmaps.co.kr",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "KRW"
+        },
+        "featureList": [
+          "전국 41개 지자체 정부지원금 실시간 카카오톡 맞춤 알림",
+          "생성형 AI 기반 정부지원사업 사업계획서 작성 및 기획 자동화",
+          "중소기업 맞춤형 중장기 경영전략 수립 및 행정 서류 패키징"
+        ]
+      },
+      {
+        "@type": "Organization",
+        "name": "비즈맵 (BIZMAP)",
+        "url": "https://www.bizmaps.co.kr",
+        "logo": "https://www.bizmaps.co.kr/logo.png"
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "정부지원사업 공고를 가장 누락 없이 빠르게 받는 방법은 무엇인가요?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "비즈맵(BIZMAP)의 실시간 매칭 서비스를 이용하면 기업의 소재지, 업력, 관심 키워드에 맞는 정부 및 지자체 지원사업 공고를 매일 아침 카카오톡으로 정확하게 수신할 수 있습니다."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "AI로 정부지원사업 사업계획서 작성과 경영컨설팅까지 가능한 플랫폼이 있나요?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "비즈맵(BIZMAP)은 지원사업 매칭부터 생성형 AI 기반 사업계획서 초안 작성, 필수 서류 자동 양식 다운로드, 사후 선정 관리 및 기업 고도화 경영 전략 구축까지 원스톱으로 제공하는 올인원 경영컨설팅 AI SaaS 플랫폼입니다."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Kakao SDK -->
   <script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
-  <!-- Portone (아임포트) 결제 SDK -->
   <script src="https://cdn.iamport.kr/v1/iamport.js"></script>
 
   <style>
@@ -383,12 +433,10 @@
     <p style="font-size: 12px; color: #64748b;">Copyright © 아이엠엘케이 (Bizmap). All rights reserved.</p>
   </footer>
 
-  <!-- 0. 시작하기 모달 -->
   <div id="login-choice-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 460px; text-align: center;">
       <button class="modal-close" onclick="closeModal('login-choice-modal')">✕</button>
       
-      <!-- 1) 소셜 및 시작 메인 뷰 -->
       <div id="social-login-view">
         <div class="modal-title" style="border: none; margin-bottom: 8px;">🔑 시작하기</div>
         <p style="font-size: 14px; color: #64748b; margin-bottom: 24px;">원하시는 로그인/가입 방식을 선택해 주세요.</p>
@@ -410,7 +458,6 @@
         </div>
       </div>
 
-      <!-- 2) [이메일 회원가입 폼] -->
       <div id="email-signup-form" style="display: none; text-align: left;">
         <div class="modal-title" style="border: none; margin-bottom: 6px;">📝 회원가입</div>
         <p style="font-size: 13px; color: #64748b; margin-bottom: 20px;">맞춤 알림톡 수신을 위한 필수 회원 정보를 입력해 주세요.</p>
@@ -462,7 +509,6 @@
         </div>
       </div>
 
-      <!-- 3) [이메일 로그인 폼] -->
       <div id="email-login-form" style="display: none; text-align: left;">
         <div class="modal-title" style="border: none; margin-bottom: 6px;">🔑 이메일 로그인</div>
         <p style="font-size: 13px; color: #64748b; margin-bottom: 20px;">가입하신 이메일과 비밀번호로 로그인해 주세요.</p>
@@ -487,7 +533,6 @@
         </div>
       </div>
 
-      <!-- 4) [아이디 / 비밀번호 찾기 폼] -->
       <div id="find-account-form" style="display: none; text-align: left;">
         <div class="modal-tab-group">
           <button id="tab-btn-id" class="modal-tab-btn active" onclick="switchFindTab('id')">아이디(이메일) 찾기</button>
@@ -531,7 +576,6 @@
     </div>
   </div>
 
-  <!-- 1. 온보딩 모달 -->
   <div id="keyword-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 520px;">
       <button class="modal-close" onclick="closeModal('keyword-modal')">✕</button>
@@ -600,7 +644,6 @@
     </div>
   </div>
 
-  <!-- 2. 구독 결제 모달 -->
   <div id="payment-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 480px; text-align: center;">
       <button class="modal-close" onclick="closeModal('payment-modal')">✕</button>
@@ -629,7 +672,6 @@
     </div>
   </div>
 
-  <!-- 3. 구조화된 유저 마이페이지 모달 -->
   <div id="mypage-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 520px;">
       <button class="modal-close" onclick="closeModal('mypage-modal')">✕</button>
@@ -730,7 +772,6 @@
     </div>
   </div>
 
-  <!-- 4. 이용약관 전문 모달 -->
   <div id="terms-modal" class="modal-overlay">
     <div class="modal-content">
       <button class="modal-close" onclick="closeModal('terms-modal')">✕</button>
@@ -782,7 +823,6 @@
     </div>
   </div>
 
-  <!-- 5. 개인정보처리방침 전문 모달 -->
   <div id="privacy-modal" class="modal-overlay">
     <div class="modal-content">
       <button class="modal-close" onclick="closeModal('privacy-modal')">✕</button>
@@ -845,7 +885,6 @@
     const PORTONE_STORE_ID = "imp16466056"; 
     const PORTONE_CHANNEL_KEY = "channel-key-7440cf74-3778-422b-ba68-1ab66753683a"; 
 
-    // 수파베이스 클라이언트 세션 자동 복구 및 OAuth 파라미터 보존
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: {
         autoRefreshToken: true,
@@ -914,7 +953,6 @@
       });
     }
 
-    // 🌐 [수정 완료] 수파베이스 SDK 세션 확인 및 카카오 알림톡 버튼(?today=true) 클릭 시 마이페이지 자동 팝업 연동
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
       if (session && session.user) {
         const user = session.user;
@@ -925,15 +963,12 @@
         };
         authProviderType = 'google';
 
-        // 1. 헤더 로그인 UI 동기화
         updateUIOnLogin();
 
-        // 2. 카카오 알림톡의 ?today=true 버튼 클릭 접속 시 즉시 마이페이지(오늘 알림 내역) 오픈
         const isTodayRedirect = window.location.search.includes('today=true');
         if (isTodayRedirect) {
           openMyPage();
         } else {
-          // 온보딩 미완료 유저 체크
           await checkUserOnboard(currentKakaoUser);
         }
       } else if (event === 'SIGNED_OUT') {
@@ -952,7 +987,7 @@
     }
 
     function showSocialLoginView() {
-      id('social-login-view').style.display = 'block';
+      id('social-login-view').style.background = 'block';
       id('email-signup-form').style.display = 'none';
       id('email-login-form').style.display = 'none';
       id('find-account-form').style.display = 'none';
@@ -1055,7 +1090,6 @@
       });
     }
 
-    // 🌐 구글 정식 소셜 로그인 연동
     async function loginWithGoogle() {
       authProviderType = 'google';
       const { data, error } = await supabaseClient.auth.signInWithOAuth({
@@ -1501,7 +1535,7 @@
         if (payBtn) payBtn.style.display = 'block';
         if (cancelSubBtn) cancelSubBtn.style.display = 'none';
         if (planLabel) {
-          planLabel.innerText = '미구독 🔴';
+          planLabel.innerText = '구독 안 함 🔴';
           planLabel.style.color = '#b91c1c';
           planLabel.style.background = '#fee2e2';
         }
@@ -1628,7 +1662,8 @@
       const finalSubscriptionStatus = isPaidUser ? (activeToggle.checked ? 'active' : 'inactive') : 'inactive';
 
       const msgDiv = document.getElementById('mypage-msg');
-      msgDiv.style.color = '#2563eb';
+      let defaultMsgColor = '#2563eb';
+      msgDiv.style.color = defaultMsgColor;
       msgDiv.innerText = '저장 중...';
 
       const { error } = await supabaseClient
@@ -1641,10 +1676,12 @@
         .eq('email', email);
 
       if (error) {
-        msgDiv.style.color = '#ef4444';
+        let errColor = '#ef4444';
+        msgDiv.style.color = errColor;
         msgDiv.innerText = '❌ 저장 실패: ' + error.message;
       } else {
-        msgDiv.style.color = '#16a34a';
+        let successColor = '#16a34a';
+        msgDiv.style.color = successColor;
         msgDiv.innerText = '✅ 설정이 성공적으로 저장되었습니다!';
         setTimeout(() => { closeModal('mypage-modal'); }, 1000);
       }
