@@ -27,8 +27,8 @@ SOLAPI_SECRET = "6YH0DTGRHVDXT4HU3RS6T0TDRINDFXH4"
 # 💡 카카오 알림톡 정식 가동
 USE_KAKAO = True
 
-# 🔥 새로 승인 완료된 [비즈맵] 맞춤 지원사업 통합 알림 템플릿 ID
 SOLAPI_PF_ID = "KA01PF260805090058574q8wFwsR3MUx"
+# 💡 새 가변형 템플릿 승인 완료 시 발급된 신규 Template ID로 교체해 주세요.
 SOLAPI_TEMPLATE_ID = "KA01TP260812073720778KfjGkb5vE9a"
 
 MY_PHONE = "01084687138"
@@ -158,7 +158,7 @@ def send_dev_warning(org_name, category, target_url, dev_history):
         pass
 
 # ==========================================
-# 3. 💬 통합 알림톡 발송 및 유저 매칭 엔진
+# 3. 💬 가변형 통합 알림톡 발송 엔진
 # ==========================================
 
 def is_region_matching(user_region, notice_region, title):
@@ -187,33 +187,56 @@ def is_region_matching(user_region, notice_region, title):
         
     return False
 
-def send_integrated_kakao_alimtalk(to_phone, user_name, matched_notices):
-    """🔥 승인된 [비즈맵] 맞춤 지원사업 통합 알림 템플릿으로 1일 1통 요약 발송"""
+def send_integrated_kakao_alimtalk(to_phone, user_name, matched_notices, user_region="전국", user_category="소상공인"):
+    """
+    🔥 가변형 통합 템플릿 발송 함수:
+    - 공고 개수만큼 1줄, 2줄, 3줄만 유동적으로 생성 (불필요한 찌꺼기 괄호 완전 제거)
+    - 유저 맞춤 조건(지역 / 업종) 정상 매핑
+    """
     solapi_url = "https://api.solapi.com/messages/v4/send"
     headers = get_solapi_headers()
     today_str = datetime.date.today().strftime('%Y.%m.%d')
     clean_phone = ''.join(filter(str.isdigit, str(to_phone)))
     total_count = len(matched_notices)
 
-    # 1~3순위 공고 및 마감일 슬롯 배치
-    def get_notice_info(idx):
-        if idx < total_count:
-            item = matched_notices[idx]
-            t = f"[{item['org_name']}] {item['title']}"
-            t_short = (t[:32] + '..') if len(t) > 34 else t
-            d = item.get('deadline') or '상세링크 참조'
-            return t_short, d
-        return "(추가 공고 없음)", "-"
+    # 1. 실제 수집된 공고 개수만큼만 번호 매겨 생성 (최대 3개 요약)
+    notice_lines = []
+    for i, item in enumerate(matched_notices[:3]):
+        t = f"[{item['org_name']}] {item['title']}"
+        t_short = (t[:32] + '..') if len(t) > 34 else t
+        d = item.get('deadline') or '상세링크 참조'
+        notice_lines.append(f"{i+1}. {t_short} (~{d})")
+    
+    notice_list_str = "\n".join(notice_lines)
 
-    title1, date1 = get_notice_info(0)
-    title2, date2 = get_notice_info(1)
-    title3, date3 = get_notice_info(2)
-
-    # 4건 이상일 때 추가 문구
+    # 2. 4건 이상일 때 추가 문구
     if total_count > 3:
-        more_text = f"\n외 {total_count - 3}건의 맞춤 공고가 더 등록되었습니다."
+        more_text_str = f"\n\n외 {total_count - 3}건의 맞춤 공고가 더 등록되었습니다."
     else:
-        more_text = ""
+        more_text_str = ""
+
+    # 3. 템플릿 변수 맵핑
+    variables = {
+        "#{고객명}": user_name or "대표",
+        "#{today_date}": today_str,
+        "#{count}": str(total_count),
+        "#{notice_list}": notice_list_str,
+        "#{more_text}": more_text_str,
+        "#{지역}": user_region or "전국",
+        "#{업종}": user_category or "소상공인"
+    }
+
+    alimtalk_text = (
+        f"[비즈맵] 맞춤 지원사업 공고 안내\n\n"
+        f"안녕하세요, {user_name or '대표'}님!\n\n"
+        f"{today_str}\n"
+        f"{user_name or '대표'}님 사업장에 딱 맞는 신규 지원사업 공고가 총 {total_count}건 등록되었습니다.\n\n"
+        f"📌 오늘의 주요 맞춤 공고\n"
+        f"{notice_list_str}{more_text_str}\n\n"
+        f"아래 버튼을 누르시면 오늘 추천된 모든 지원사업의 상세 내용과 신청 원문 링크를 한눈에 확인하실 수 있습니다.\n\n"
+        f"※ 본 메시지는 대표님께서 비즈맵 서비스 가입 시 직접 신청 및 동의하신 지원사업 맞춤 알림 조건({user_region} / {user_category})에 따라 신규 공고 발생 시 발송되는 안내 메시지입니다.\n\n"
+        f"※ 수신 조건 변경 및 일시정지는 [마이페이지]에서 언제든지 가능합니다."
+    )
 
     payload = {
         "message": {
@@ -223,33 +246,11 @@ def send_integrated_kakao_alimtalk(to_phone, user_name, matched_notices):
             "kakaoOptions": {
                 "pfId": SOLAPI_PF_ID,
                 "templateId": SOLAPI_TEMPLATE_ID,
-                "variables": {
-                    "#{고객명}": user_name or "대표",
-                    "#{today_date}": today_str,
-                    "#{count}": str(total_count),
-                    "#{title1}": title1,
-                    "#{date1}": date1,
-                    "#{title2}": title2,
-                    "#{date2}": date2,
-                    "#{title3}": title3,
-                    "#{date3}": date3,
-                    "#{more_text}": more_text
-                },
+                "variables": variables,
                 "disableSms": False
             },
             "subject": "[비즈맵] 오늘의 맞춤 지원사업 통합 알림",
-            "text": (
-                f"[비즈맵] 맞춤 지원사업 공고 안내\n\n"
-                f"안녕하세요, {user_name or '대표'}님!\n\n"
-                f"{today_str}\n"
-                f"{user_name or '대표'}님 사업장에 딱 맞는 신규 지원사업 공고가 총 {total_count}건 등록되었습니다.\n\n"
-                f"📌 오늘의 주요 맞춤 공고\n"
-                f"1. {title1} (~{date1})\n"
-                f"2. {title2} (~{date2})\n"
-                f"3. {title3} (~{date3})\n"
-                f"{more_text}\n\n"
-                f"아래 버튼을 누르시면 오늘 추천된 모든 지원사업의 상세 내용과 신청 원문 링크를 한눈에 확인하실 수 있습니다."
-            )
+            "text": alimtalk_text
         }
     }
 
@@ -548,7 +549,6 @@ def extract_title_and_link_smart(soup, org_name, target_url):
 # ==========================================
 
 def add_notice_to_user_buckets(title, org_name, notice_region, category, target_url, user_buckets, sent_history):
-    """신규 공고를 발송 이력에 기록하고 매칭되는 유저들의 바구니에 담기"""
     matched_count = 0
     
     for email, u_data in user_buckets.items():
@@ -572,7 +572,6 @@ def add_notice_to_user_buckets(title, org_name, notice_region, category, target_
             })
             matched_count += 1
             
-            # DB 발송/매칭 이력 기록 (마이페이지에서 열람 가능)
             try:
                 supabase.table("notification_logs").insert({
                     "email": email,
@@ -586,7 +585,6 @@ def add_notice_to_user_buckets(title, org_name, notice_region, category, target_
     sent_history.add(target_url)
     return matched_count
 
-# 공식 Open API 수집부
 def collect_kstartup_api(user_buckets, sent_history):
     print("\n🌐 [공식 API] K-Startup 사업공고 수집 중...")
     url = f"https://apis.data.go.kr/B552735/kisedKstartupService01/getAnnouncementInformation01?serviceKey={DATA_GO_KEY}&page=1&perPage=10&returnType=json"
@@ -777,7 +775,6 @@ def main():
     sent_history = load_history_from_supabase()
     dev_history = load_json_file(DEV_ALERT_FILE)
 
-    # 1. 활성 유저 목록을 불러와 맞춤 바구니(User Bucket) 생성
     try:
         res = supabase.table("users").select("*").eq("subscription_status", "active").execute()
         active_users = res.data or []
@@ -844,7 +841,6 @@ def main():
             
         time.sleep(0.5)
 
-    # 4대 공식 API 수집
     collect_kstartup_api(user_buckets, sent_history)
     collect_bizinfo_api(user_buckets, sent_history)
     collect_jejutp_api(user_buckets, sent_history)
@@ -870,17 +866,24 @@ def main():
             keywords = [k.strip() for k in keywords.split(",")]
 
         user_phone = None
+        user_region = "전국"
+        user_category = "소상공인"
+
         for kw in keywords:
             if "📱" in kw or re.match(r'^\d{9,11}$', kw.replace("-", "")):
                 user_phone = kw.replace("📱", "").strip()
+            elif any(r in kw for r in ["서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"]):
+                user_region = kw.strip()
+            elif any(c in kw for c in ["소상공인", "자영업", "창업", "제조", "IT", "스타트업"]):
+                user_category = kw.strip()
 
         if not user_phone:
             continue
 
         if len(notices) > 0:
-            print(f"\n💬 [{user_name}님 ({user_phone})] 오늘 매칭된 신규 공고 총 {len(notices)}건 통합 발송 중...")
+            print(f"\n💬 [{user_name}님 ({user_phone})] 조건:({user_region}/{user_category}) | 신규 공고 {len(notices)}건 통합 발송 중...")
             if USE_KAKAO:
-                success, err_msg = send_integrated_kakao_alimtalk(user_phone, user_name, notices)
+                success, err_msg = send_integrated_kakao_alimtalk(user_phone, user_name, notices, user_region, user_category)
                 if success:
                     print(f"  🎉 [통합 알림톡 발송 성공!]")
                     total_sent_users += 1
