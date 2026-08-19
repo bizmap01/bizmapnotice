@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>비즈맵(Bizmap) - 지원사업 맞춤 카카오톡 알림</title>
   <!-- BIZMAP 공식 파비콘 -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%230F172A'/%3E%3Cpath d='M14 10H23C27.4183 10 31 13.134 31 17C31 20.866 27.4183 24 23 24H14V10Z' fill='url(%23g1)'/%3E%3Cpath d='M14 24H25C29.9706 24 34 27.134 34 31C34 34.866 29.9706 38 25 38H14V24Z' fill='url(%23g2)'/%3E%3Ccircle cx='22.5' cy='17' r='3' fill='%23FFFFFF'/%3E%3Cpath d='M23.5 34.5L29 29M29 29H25.5M29 29V32.5' stroke='%23FFFFFF' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cdefs%3E%3ClinearGradient id='g1' x1='14' y1='10' x2='31' y2='24' gradientUnits='userSpaceOnUse'%3E%3Cstop stop-color='%232563EB'/%3E%3Cstop offset='1' stop-color='%2306B6D4'/%3E%3C/linearGradient%3E%3ClinearGradient id='g2' x1='14' y1='24' x2='34' y2='38' gradientUnits='userSpaceOnUse'%3E%3Cstop stop-color='%231D4ED8'/%3E%3Cstop offset='1' stop-color='%232563EB'/%3E%3C/linearGradient%3E%3Cdefs%3E%3C/svg%3E">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%230F172A'/%3E%3Cpath d='M14 10H23C27.4183 10 31 13.134 31 17C31 20.866 27.4183 24 23 24H14V10Z' fill='url(%23g1)'/%3E%3Cpath d='M14 24H25C29.9706 24 34 27.134 34 31C34 34.866 29.9706 38 25 38H14V24Z' fill='url(%23g2)'/%3E%3Ccircle cx='22.5' cy='17' r='3' fill='%23FFFFFF'/%3E%3Cpath d='M23.5 34.5L29 29M29 29H25.5M29 29V32.5' stroke='%23FFFFFF' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cdefs%3E%3ClinearGradient id='g1' x1='14' y1='10' x2='31' y2='24' gradientUnits='userSpaceOnUse'%3E%3Cstop stop-color='%232563EB'/%3E%3Cstop offset='1' stop-color='%2306B6D4'/%3E%3C/linearGradient%3E%3ClinearGradient id='g2' x1='14' y1='24' x2='34' y2='38' gradientUnits='userSpaceOnUse'%3E%3Cstop stop-color='%231D4ED8'/%3E%3Cstop offset='1' stop-color='%232563EB'/%3E%3C/linearGradient%3E%3C/defs%3E%3C/svg%3E">
   
   <!-- 🤖 BIZMAP GEO 최적화 구조화 데이터 (Schema.org JSON-LD) -->
   <script type="application/ld+json">
@@ -85,9 +85,13 @@
     .nav { display: flex; gap: 24px; font-size: 15px; color: #64748b; font-weight: 600; }
     .nav a { color: #64748b; text-decoration: none; transition: color 0.2s; }
     .nav a:hover { color: #2563eb; }
+    
+    #auth-nav { display: flex; align-items: center; gap: 8px; }
     .btn-login { background: #2563eb; color: white; padding: 8px 18px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 600; cursor: pointer; border: none; }
-    .btn-mypage-nav { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 8px 18px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
-    .btn-logout-nav { background: #ffffff; color: #ef4444; border: 1px solid #fca5a5; padding: 8px 14px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; margin-left: 6px; }
+    .btn-today-nav { background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13.5px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 4px rgba(37,99,235,0.2); transition: all 0.2s; }
+    .btn-today-nav:hover { background: #1d4ed8; transform: translateY(-1px); }
+    .btn-mypage-nav { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 8px 14px; border-radius: 6px; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+    .btn-logout-nav { background: #ffffff; color: #ef4444; border: 1px solid #fca5a5; padding: 8px 12px; border-radius: 6px; font-size: 13.5px; font-weight: 600; cursor: pointer; }
     
     .hero { text-align: center; padding: 80px 20px 60px; background: linear-gradient(180deg, #eff6ff 0%, #f8fafc 100%); }
     .badge-group { display: flex; justify-content: center; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
@@ -222,13 +226,37 @@
     .form-link-group { display: flex; justify-content: space-between; margin-top: 14px; font-size: 12.5px; color: #64748b; }
     .form-link-group a { color: #2563eb; text-decoration: underline; cursor: pointer; font-weight: 600; }
 
-    /* 📢 오늘의 공고 전용 팝업 카드 스타일 */
+    /* 📢 타임라인 날짜 헤더 & 공고 카드 스타일 */
+    .date-timeline-header {
+      font-size: 13.5px;
+      font-weight: 800;
+      color: #1e40af;
+      background: #eff6ff;
+      border-left: 4px solid #2563eb;
+      padding: 7px 12px;
+      border-radius: 0 8px 8px 0;
+      margin: 18px 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .date-timeline-header:first-child {
+      margin-top: 4px;
+    }
+    .today-tag {
+      background: #2563eb;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
     .today-notice-card {
       background: #ffffff;
       border: 1px solid #e2e8f0;
       border-radius: 12px;
-      padding: 16px 18px;
-      margin-bottom: 12px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
       transition: all 0.2s;
       box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
@@ -238,7 +266,7 @@
       box-shadow: 0 6px 12px rgba(37,99,235,0.06);
     }
     .today-notice-title {
-      font-size: 15px;
+      font-size: 14.5px;
       font-weight: 800;
       color: #0f172a;
       line-height: 1.45;
@@ -258,17 +286,18 @@
       color: white !important;
       padding: 6px 14px;
       border-radius: 6px;
-      font-size: 12.5px;
+      font-size: 12px;
       font-weight: 700;
       text-decoration: none !important;
       display: inline-flex;
       align-items: center;
       gap: 4px;
+      box-shadow: 0 2px 4px rgba(37,99,235,0.2);
     }
 
     @media (max-width: 768px) {
-      header { padding: 14px 20px; }
-      .nav { gap: 14px; font-size: 13.5px; }
+      header { padding: 14px 16px; }
+      .nav { display: none; } /* 모바일에서 간결하게 버튼 중심 배치 */
       .hero { padding: 50px 16px 40px; }
       .hero h1 { font-size: 26px; margin-bottom: 18px; }
       .hero p { font-size: 15px; margin-bottom: 28px; }
@@ -295,6 +324,9 @@
     </div>
     <div id="auth-nav">
       <button id="nav-login-btn" onclick="openLoginOptionsModal()" class="btn-login">시작하기</button>
+      
+      <!-- 📢 [신규] 로그인 시 노출되는 핵심 버튼 그룹 -->
+      <button id="nav-today-btn" onclick="openTodayNoticesModal()" class="btn-today-nav" style="display: none;">📢 맞춤 지원사업</button>
       <button id="nav-mypage-btn" onclick="openMyPage()" class="btn-mypage-nav" style="display: none;">👤 내 알림 설정</button>
       <button id="nav-logout-btn" onclick="logoutWithKakao()" class="btn-logout-nav" style="display: none;">로그아웃</button>
     </div>
@@ -482,28 +514,28 @@
     <p style="font-size: 12px; color: #64748b;">Copyright © 아이엠엘케이 (Bizmap). All rights reserved.</p>
   </footer>
 
-  <!-- 📢 [신규] 오늘의 맞춤 지원사업 공고 전용 모달 -->
+  <!-- 📢 [개선 완료] 날짜별 타임라인 맞춤 지원사업 모달 -->
   <div id="today-notices-modal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 600px;">
+    <div class="modal-content" style="max-width: 620px;">
       <button class="modal-close" onclick="closeModal('today-notices-modal')">✕</button>
       <div class="modal-title" style="display: flex; align-items: center; justify-content: space-between;">
-        <span>📢 오늘의 맞춤 지원사업 공고</span>
-        <span id="today-modal-date" style="font-size: 12.5px; color: #2563eb; font-weight: 700; background: #eff6ff; padding: 4px 10px; border-radius: 20px;">2026.08.19</span>
+        <span>📢 나의 맞춤 지원사업 리스트</span>
+        <span style="font-size: 12px; color: #2563eb; font-weight: 700; background: #eff6ff; padding: 4px 10px; border-radius: 20px;">최근 7일간 추천 내역</span>
       </div>
       <div class="modal-body">
-        <p style="font-size: 13.5px; color: #64748b; margin-bottom: 18px;">
-          대표님의 설정 조건에 맞춰 선별된 최신 지원사업입니다. 공고를 누르시면 원본 상세 페이지로 바로 이동합니다.
+        <p style="font-size: 13px; color: #64748b; margin-bottom: 14px;">
+          대표님의 설정 조건에 맞춰 매칭된 공고들입니다. 공고 제목을 클릭하시면 신청 상세 페이지로 바로 이동합니다.
         </p>
 
-        <div id="today-notices-container" style="max-height: 420px; overflow-y: auto; padding-right: 4px;">
-          <p style="text-align: center; color: #94a3b8; padding: 30px 0;">공고를 불러오는 중입니다...</p>
+        <div id="today-notices-container" style="max-height: 440px; overflow-y: auto; padding-right: 4px;">
+          <p style="text-align: center; color: #94a3b8; padding: 30px 0;">공고 목록을 불러오는 중입니다...</p>
         </div>
 
         <div style="display: flex; gap: 8px; margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
           <button onclick="closeModal('today-notices-modal'); openMyPage();" style="flex: 1; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 12px; border-radius: 10px; font-weight: 700; cursor: pointer;">
             ⚙️ 내 알림 조건/키워드 변경
           </button>
-          <button onclick="closeModal('today-notices-modal')" style="background: #2563eb; color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: 800; cursor: pointer;">
+          <button onclick="closeModal('today-notices-modal')" style="background: #2563eb; color: white; border: none; padding: 12px 22px; border-radius: 10px; font-weight: 800; cursor: pointer;">
             확인 완료
           </button>
         </div>
@@ -753,7 +785,7 @@
     </div>
   </div>
 
-  <!-- 3. 구조화된 유저 마이페이지 모달 -->
+  <!-- 3. 유저 마이페이지 모달 -->
   <div id="mypage-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 520px;">
       <button class="modal-close" onclick="closeModal('mypage-modal')">✕</button>
@@ -829,13 +861,6 @@
           </div>
           <div style="display: flex; align-items: center; gap: 8px;">
             <input type="checkbox" id="mypage-active-toggle" style="width: 18px; height: 18px; cursor: pointer;">
-          </div>
-        </div>
-
-        <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; margin-bottom: 20px;">
-          <label style="font-size: 14px; font-weight: 700; display: block; margin-bottom: 8px; color: #0f172a;">📜 최근 발송된 알림톡 기록</label>
-          <div id="mypage-history-list" style="max-height: 160px; overflow-y: auto; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; font-size: 13px;">
-            <p style="color: #94a3b8; text-align: center; margin: 10px 0;">기록을 불러오는 중...</p>
           </div>
         </div>
 
@@ -1037,7 +1062,7 @@
       });
     }
 
-    // 🌐 [수정 완료] 수파베이스 세션 체크 및 알림톡(?today=true) 클릭 시 '오늘의 공고 리포트' 즉시 오픈
+    // 🌐 수파베이스 세션 체크 및 ?today=true 접속 시 날짜별 공고 리스트 자동 오픈
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
       if (session && session.user) {
         const user = session.user;
@@ -1061,47 +1086,78 @@
       }
     });
 
-    // 📢 오늘의 맞춤 공고 전용 팝업 열기 함수
+    // 📢 [핵심] 최근 7일간의 공고를 날짜별(타임라인)로 그룹화하여 렌더링
     async function openTodayNoticesModal() {
       if (!currentKakaoUser) {
-        // 비로그인 상태로 카톡 링크를 타고 온 경우 먼저 로그인 유도
         openLoginOptionsModal();
         return;
       }
 
       const email = currentKakaoUser.kakao_account?.email || `user_${currentKakaoUser.id}@bizmap.local`;
       const container = document.getElementById('today-notices-container');
-      const dateBadge = document.getElementById('today-modal-date');
-      
-      const todayStr = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/ /g, '');
-      if (dateBadge) dateBadge.innerText = todayStr;
 
       openModal('today-notices-modal');
       container.innerHTML = '<p style="text-align: center; color: #94a3b8; padding: 30px 0;">맞춤 공고 목록을 불러오는 중입니다...</p>';
+
+      // 최근 7일 전 타임스탬프 계산
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
       const { data: logs, error } = await supabaseClient
         .from('notification_logs')
         .select('title, created_at, link')
         .eq('email', email)
-        .order('created_at', { ascending: false })
-        .limit(15);
+        .gte('created_at', sevenDaysAgo)
+        .order('created_at', { ascending: false });
 
       if (logs && logs.length > 0) {
-        container.innerHTML = logs.map((item, idx) => `
-          <div class="today-notice-card">
-            <div class="today-notice-title">${idx + 1}. ${item.title}</div>
-            <div class="today-notice-meta">
-              <span>📅 매칭일자: ${new Date(item.created_at).toLocaleDateString('ko-KR')}</span>
-              ${item.link ? `<a href="${item.link}" target="_blank" class="btn-notice-direct">원문 공고 확인 🔗</a>` : ''}
+        const todayStr = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/ /g, '');
+        
+        // 날짜별 그룹핑
+        const dateGroups = {};
+        logs.forEach(item => {
+          const itemDate = new Date(item.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/ /g, '');
+          if (!dateGroups[itemDate]) {
+            dateGroups[itemDate] = [];
+          }
+          dateGroups[itemDate].push(item);
+        });
+
+        let htmlContent = '';
+        let globalCounter = 1;
+
+        for (let dateKey in dateGroups) {
+          const isToday = (dateKey === todayStr);
+          const headerTitle = isToday ? `🗓️ ${dateKey} (오늘 추천 공고)` : `🗓️ ${dateKey}`;
+          const todayBadge = isToday ? `<span class="today-tag">오늘</span>` : ``;
+
+          htmlContent += `
+            <div class="date-timeline-header">
+              <span>${headerTitle}</span>
+              ${todayBadge}
             </div>
-          </div>
-        `).join('');
+          `;
+
+          dateGroups[dateKey].forEach(item => {
+            htmlContent += `
+              <div class="today-notice-card">
+                <div class="today-notice-title">${globalCounter}. ${item.title}</div>
+                <div class="today-notice-meta">
+                  <span>📌 등록일시: ${new Date(item.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
+                  ${item.link ? `<a href="${item.link}" target="_blank" class="btn-notice-direct">원문 공고 확인 🔗</a>` : ''}
+                </div>
+              </div>
+            `;
+            globalCounter++;
+          });
+        }
+
+        container.innerHTML = htmlContent;
       } else {
         container.innerHTML = `
           <div style="text-align: center; padding: 40px 10px; color: #64748b;">
             <div style="font-size: 32px; margin-bottom: 10px;">📭</div>
-            <p style="font-weight: 700; color: #0f172a; margin-bottom: 4px;">수신된 지원사업 공고 내역이 없습니다.</p>
-            <p style="font-size: 13px;">내일 아침 신규 공고가 등록되면 카카오톡으로 안내해 드립니다.</p>
+            <p style="font-weight: 700; color: #0f172a; margin-bottom: 4px;">최근 7일간 수신된 맞춤 지원사업이 없습니다.</p>
+            <p style="font-size: 13px;">내일 아침 신규 공고가 등록되면 카카오톡으로 즉시 안내해 드립니다.</p>
           </div>
         `;
       }
@@ -1109,7 +1165,7 @@
 
     function openLoginOptionsModal() {
       if (currentKakaoUser) {
-        openMyPage();
+        openTodayNoticesModal();
         return;
       }
       resetAllForms();
@@ -1163,17 +1219,19 @@
 
     function updateUIOnLogin() {
       document.getElementById('nav-login-btn').style.display = 'none';
+      document.getElementById('nav-today-btn').style.display = 'inline-flex';
       document.getElementById('nav-mypage-btn').style.display = 'inline-block';
       document.getElementById('nav-logout-btn').style.display = 'inline-block';
       const heroBtn = id('hero-start-btn');
       if (heroBtn) {
-        heroBtn.innerText = '👤 내 알림 설정 (마이페이지)';
-        heroBtn.onclick = openMyPage;
+        heroBtn.innerText = '📢 맞춤 지원사업 확인하기';
+        heroBtn.onclick = openTodayNoticesModal;
       }
     }
 
     function updateUIOnLogout() {
       document.getElementById('nav-login-btn').style.display = 'inline-block';
+      document.getElementById('nav-today-btn').style.display = 'none';
       document.getElementById('nav-mypage-btn').style.display = 'none';
       document.getElementById('nav-logout-btn').style.display = 'none';
       const heroBtn = id('hero-start-btn');
@@ -1440,7 +1498,7 @@
           .maybeSingle();
 
         if (existingUser && existingUser.keywords && existingUser.keywords.length > 0) {
-          openMyPage();
+          openTodayNoticesModal();
           return;
         }
       } catch (err) {
@@ -1724,28 +1782,6 @@
         });
 
         document.getElementById('mypage-detail-kw').value = detailKwList.join(', ');
-      }
-
-      const historyDiv = document.getElementById('mypage-history-list');
-      const { data: logs } = await supabaseClient
-        .from('notification_logs')
-        .select('title, created_at, link')
-        .eq('email', email)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (logs && logs.length > 0) {
-        historyDiv.innerHTML = logs.map(log => `
-          <div style="border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 8px;">
-            <div style="font-weight: 700; color: #0f172a; font-size: 13px;">${log.title}</div>
-            <div style="font-size: 11px; color: #64748b; display: flex; justify-content: space-between; margin-top: 4px;">
-              <span>📅 ${new Date(log.created_at).toLocaleDateString('ko-KR')}</span>
-              ${log.link ? `<a href="${log.link}" target="_blank" style="color: #2563eb; font-weight: 700; text-decoration: none;">원문 보기 🔗</a>` : ''}
-            </div>
-          </div>
-        `).join('');
-      } else {
-        historyDiv.innerHTML = '<p style="color: #94a3b8; text-align: center; margin: 12px 0;">아직 수신된 알림톡 내역이 없습니다.</p>';
       }
     }
 
