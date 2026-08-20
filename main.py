@@ -210,7 +210,6 @@ def send_integrated_kakao_alimtalk(to_phone, user_name, matched_notices, user_re
 
     more_text = f"\n외 {total_count - 3}건의 맞춤 공고가 더 등록되었습니다." if total_count > 3 else ""
 
-    # 🔥 알림톡 변수 목록: 고객명, 공고1~3, 지역/업종까지 완벽 전달
     variables = {
         "#{고객명}": user_name or "대표",
         "#{today_date}": today_str,
@@ -222,7 +221,6 @@ def send_integrated_kakao_alimtalk(to_phone, user_name, matched_notices, user_re
         "#{title3}": title3,
         "#{date3}": date3,
         "#{more_text}": more_text,
-        # 💡 하단 알림 조건 ( / ) 공백 방지용 변수 매핑
         "#{지역}": user_region or "전국",
         "#{업종}": user_category or "소상공인",
         "#{분야}": user_category or "소상공인",
@@ -593,11 +591,12 @@ def add_notice_to_user_buckets(title, org_name, notice_region, category, target_
     return matched_count
 
 def collect_kstartup_api(user_buckets, sent_history):
+    """🔥 K-Startup 최신 20건 전수 순회 (중복 아닌 모든 신규 공고 수집)"""
     print("\n🌐 [공식 API] K-Startup 사업공고 수집 중...")
-    url = f"https://apis.data.go.kr/B552735/kisedKstartupService01/getAnnouncementInformation01?serviceKey={DATA_GO_KEY}&page=1&perPage=10&returnType=json"
+    url = f"https://apis.data.go.kr/B552735/kisedKstartupService01/getAnnouncementInformation01?serviceKey={DATA_GO_KEY}&page=1&perPage=20&returnType=json"
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-        res = requests.get(url, headers=headers, timeout=5)
+        res = requests.get(url, headers=headers, timeout=10)
         if res.status_code == 200:
             data = res.json()
             items = data.get('data', [])
@@ -606,6 +605,7 @@ def collect_kstartup_api(user_buckets, sent_history):
             if isinstance(items, dict):
                 items = [items]
 
+            new_count = 0
             for item in items:
                 title = str(item.get('biz_pbanc_nm') or item.get('intg_pbanc_biz_nm') or item.get('pbancNm') or '').strip()
                 title = clean_duplicate_text(title)
@@ -615,21 +615,24 @@ def collect_kstartup_api(user_buckets, sent_history):
                     continue
 
                 if title in sent_history or detail_url in sent_history:
-                    print("  ✅ [K-Startup] 최신 공고 변동 없음 (이미 발송 완료)")
-                    break
-                else:
-                    print(f"  📢 [K-Startup 신규 공고 발견!] {title}")
-                    add_notice_to_user_buckets(title, "K-Startup", "전국", "창업지원", detail_url, user_buckets, sent_history)
-                    break
+                    continue  # 이미 처리된 공고는 스킵하고 다음 공고 계속 확인
+
+                print(f"  📢 [K-Startup 신규 공고 발견!] {title}")
+                add_notice_to_user_buckets(title, "K-Startup", "전국", "창업지원", detail_url, user_buckets, sent_history)
+                new_count += 1
+
+            if new_count == 0:
+                print("  ✅ [K-Startup] 최신 공고 변동 없음 (이미 발송 완료)")
     except Exception as e:
         print(f"  ✅ [K-Startup] 예외 처리 완료 ({e})")
 
 def collect_bizinfo_api(user_buckets, sent_history):
+    """🔥 기업마당 최신 20건 전수 순회 (부산 등 지자체 다중 신규 공고 완벽 수집)"""
     print("\n🌐 [공식 API] 기업마당 지원사업 수집 중...")
-    url = f"https://apis.data.go.kr/1421000/bizinfo/pblancBsnsService?serviceKey={DATA_GO_KEY}&pageNo=1&numOfRows=10&dataType=json"
+    url = f"https://apis.data.go.kr/1421000/bizinfo/pblancBsnsService?serviceKey={DATA_GO_KEY}&pageNo=1&numOfRows=20&dataType=json"
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-        res = requests.get(url, headers=headers, timeout=5)
+        res = requests.get(url, headers=headers, timeout=10)
         if res.status_code == 200:
             data = res.json()
             items = data.get('jsonArray', [])
@@ -638,6 +641,7 @@ def collect_bizinfo_api(user_buckets, sent_history):
             if isinstance(items, dict):
                 items = [items]
 
+            new_count = 0
             for item in items:
                 title = str(item.get('pblancNm') or item.get('title') or '').strip()
                 title = clean_duplicate_text(title)
@@ -647,14 +651,16 @@ def collect_bizinfo_api(user_buckets, sent_history):
                     continue
 
                 if title in sent_history or detail_url in sent_history:
-                    print("  ✅ [기업마당] 최신 공고 변동 없음 (이미 발송 완료)")
-                    break
-                else:
-                    print(f"  📢 [기업마당 신규 공고 발견!] {title}")
-                    add_notice_to_user_buckets(title, "기업마당", "전국", "중소기업지원", detail_url, user_buckets, sent_history)
-                    break
-    except Exception:
-        print("  ✅ [기업마당] 최신 공고 변동 없음")
+                    continue  # 이미 처리된 공고는 스킵하고 다음 공고 계속 확인
+
+                print(f"  📢 [기업마당 신규 공고 발견!] {title}")
+                add_notice_to_user_buckets(title, "기업마당", "전국", "중소기업지원", detail_url, user_buckets, sent_history)
+                new_count += 1
+
+            if new_count == 0:
+                print("  ✅ [기업마당] 최신 공고 변동 없음 (이미 발송 완료)")
+    except Exception as e:
+        print(f"  ⚠️ [기업마당] 수집 예외: {e}")
 
 def collect_jejutp_api(user_buckets, sent_history):
     print("\n🌐 [API] 제주테크노파크 사업공고 수집 중...")
