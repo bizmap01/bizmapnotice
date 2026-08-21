@@ -46,7 +46,7 @@ DYNAMIC_ORGS = [
     "경북테크노파크", "대전일자리경제진흥원",
     "소상공인24", "대구테크노파크", "경남테크노파크", "충북테크노파크",
     "전남테크노파크", "세종테크노파크", "전북특별자치도 경제통상진흥원",
-    "서울경제진흥원", "전북테크노파크"
+    "서울경제진흥원", "전북테크노파크", "지식재산처", "지역지식재산센터", "발명진흥회"
 ]
 
 # 시스템 노이즈, 선정결과, 직원 채용 공고 차단 필터
@@ -284,16 +284,22 @@ def fetch_cffi_with_retry(target_url, max_retries=2):
     return None
 
 def fetch_with_playwright(target_url, org_name=""):
+    """🔥 지식재산처 및 동적 사이트 네비게이션 충돌 방지 강화 버전"""
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
-            context = browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            context = browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            )
             page = context.new_page()
             
             try:
-                page.goto(target_url, timeout=35000, wait_until="commit")
+                page.goto(target_url, timeout=30000, wait_until="domcontentloaded")
             except Exception:
-                pass
+                try:
+                    page.goto(target_url, timeout=30000, wait_until="commit")
+                except Exception:
+                    pass
             
             if "경기도경제과학" in org_name:
                 try:
@@ -302,6 +308,12 @@ def fetch_with_playwright(target_url, org_name=""):
                 except Exception:
                     pass
 
+            # 잠재적 리다이렉트 대기
+            try:
+                page.wait_for_load_state("networkidle", timeout=3000)
+            except Exception:
+                pass
+
             wait_targets = [
                 "tbody tr", "table tr", ".kboard-list-title", ".pms-board-list",
                 ".tbl_list", ".sub_biz_list", ".bo_tit", ".prj_list_box",
@@ -309,13 +321,21 @@ def fetch_with_playwright(target_url, org_name=""):
             ]
             for target in wait_targets:
                 try:
-                    page.wait_for_selector(target, timeout=2500)
+                    page.wait_for_selector(target, timeout=1500)
                     break
                 except Exception:
                     pass
 
-            time.sleep(3.5)
-            content = page.content()
+            # 안전 재시도 루프 (네비게이션 중 content 호출 에러 방지)
+            content = ""
+            for _ in range(4):
+                try:
+                    time.sleep(1.2)
+                    content = page.content()
+                    if content and len(content) > 300:
+                        break
+                except Exception:
+                    time.sleep(1.2)
 
             for frame in page.frames:
                 try:
@@ -591,12 +611,14 @@ def add_notice_to_user_buckets(title, org_name, notice_region, category, target_
     return matched_count
 
 def collect_kstartup_api(user_buckets, sent_history):
-    """🔥 K-Startup 최신 20건 전수 순회 (중복 아닌 모든 신규 공고 수집)"""
+    """🔥 K-Startup: 1차 공식 API -> 실패 시 2차 웹(Playwright) 크롤링"""
     print("\n🌐 [공식 API] K-Startup 사업공고 수집 중...")
     url = f"https://apis.data.go.kr/B552735/kisedKstartupService01/getAnnouncementInformation01?serviceKey={DATA_GO_KEY}&page=1&perPage=20&returnType=json"
+    api_success = False
+
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-        res = requests.get(url, headers=headers, timeout=15)
+        res = requests.get(url, headers=headers, timeout=10)
         if res.status_code == 200:
             data = res.json()
             items = data.get('data', [])
@@ -613,9 +635,8 @@ def collect_kstartup_api(user_buckets, sent_history):
 
                 if not is_valid_real_notice(title):
                     continue
-
                 if title in sent_history or detail_url in sent_history:
-                    continue  # 이미 처리된 공고는 스킵하고 다음 공고 계속 확인
+                    continue
 
                 print(f"  📢 [K-Startup 신규 공고 발견!] {title}")
                 add_notice_to_user_buckets(title, "K-Startup", "전국", "창업지원", detail_url, user_buckets, sent_history)
@@ -623,18 +644,43 @@ def collect_kstartup_api(user_buckets, sent_history):
 
             if new_count == 0:
                 print("  ✅ [K-Startup] 최신 공고 변동 없음 (이미 발송 완료)")
-    except Exception as e:
-        print(f"  ✅ [K-Startup] 예외 처리 완료 ({e})")
+            api_success = True
+    except Exception:
+        print("  ⚠️ [K-Startup API 지연] -> 웹 직접 크롤링으로 전환합니다.")
+
+    if not api_success:
+        try:
+            pw_html = fetch_with_playwright("https://www.k-startup.go.kr/web/contents/bizpbanc-ongoing.do", "K-Startup")
+            if pw_html:
+                soup = BeautifulSoup(pw_html, "html.parser")
+                new_count = 0
+                for a_tag in soup.select("ul.notice_list li a, .pms-board-list td a, tbody tr td a, .tit a"):
+                    t = clean_duplicate_text(a_tag.get_text(" ", strip=True))
+                    href = a_tag.get("href", "")
+                    link = urljoin("https://www.k-startup.go.kr", href) if href else "https://www.k-startup.go.kr"
+
+                    if not is_valid_real_notice(t):
+                        continue
+                    if t in sent_history or link in sent_history:
+                        continue
+
+                    print(f"  📢 [K-Startup(웹백업) 신규 공고 발견!] {t}")
+                    add_notice_to_user_buckets(t, "K-Startup", "전국", "창업지원", link, user_buckets, sent_history)
+                    new_count += 1
+                if new_count == 0:
+                    print("  ✅ [K-Startup(웹백업)] 최신 공고 변동 없음")
+        except Exception as e:
+            print(f"  ❌ K-Startup 웹 백업 실패: {e}")
 
 def collect_bizinfo_api(user_buckets, sent_history):
-    """🔥 1차 공식 API 시도 -> 실패 시 2차 웹 직접 크롤링 백업"""
+    """🔥 기업마당: 공식 API -> 지정 웹 주소(selectSIIA200View.do) 크롤링 3중 완벽 백업"""
     print("\n🌐 [공식 API] 기업마당 지원사업 수집 중...")
     url = f"https://apis.data.go.kr/1421000/bizinfo/pblancBsnsService?serviceKey={DATA_GO_KEY}&pageNo=1&numOfRows=20&dataType=json"
     api_success = False
 
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-        res = requests.get(url, headers=headers, timeout=15)
+        res = requests.get(url, headers=headers, timeout=8)
         if res.status_code == 200:
             data = res.json()
             items = data.get('jsonArray', [])
@@ -651,7 +697,6 @@ def collect_bizinfo_api(user_buckets, sent_history):
 
                 if not is_valid_real_notice(title):
                     continue
-
                 if title in sent_history or detail_url in sent_history:
                     continue
 
@@ -663,35 +708,62 @@ def collect_bizinfo_api(user_buckets, sent_history):
                 print("  ✅ [기업마당] 최신 공고 변동 없음 (이미 발송 완료)")
             api_success = True
     except Exception:
-        print(f"  ⚠️ [기업마당 API 지연] -> 웹 직접 크롤링(2차 백업)으로 전환합니다.")
+        print(f"  ⚠️ [기업마당 API 지연] -> 지정 웹페이지 크롤링으로 전환합니다.")
 
-    # 💡 2차 백업: API 타임아웃/오류 시 기업마당 웹페이지 직접 파싱
+    # 💡 2차/3차 백업: 대표님이 지정하신 실시간 웹 공고 주소 파싱
     if not api_success:
         try:
-            web_url = "https://www.bizinfo.go.kr/web/lay1/bbs/S1T122C128/AS/74/list.do"
-            res = fetch_cffi_with_retry(web_url, max_retries=2)
+            target_web_url = "https://www.bizinfo.go.kr/sii/siia/selectSIIA200View.do?schPblancDiv=01"
+            html = None
+            
+            res = fetch_cffi_with_retry(target_web_url, max_retries=2)
             if res and res.status_code == 200:
-                soup = BeautifulSoup(res.content.decode('utf-8', errors='ignore'), "html.parser")
+                html = res.content.decode('utf-8', errors='ignore')
+            
+            if not html:
+                print("  ↪️ [기업마당] Playwright 브라우저 직접 렌더링으로 3차 백업 가동")
+                html = fetch_with_playwright(target_web_url, "기업마당")
+
+            if html:
+                soup = BeautifulSoup(html, "html.parser")
                 new_count = 0
-                for tr in soup.select("table.table_style01 tbody tr, tbody tr"):
-                    a_tag = tr.select_one("td.subject a, td.txt_l a, a")
+                
+                # 기업마당 목록 테이블 순회
+                for tr in soup.select("table tbody tr, tbody tr, .table_style01 tr, .table_list tr"):
+                    a_tag = tr.select_one("td.subject a, td.txt_l a, td:nth-child(3) a, a.tit, a")
                     if not a_tag:
                         continue
-                    t = clean_duplicate_text(a_tag.text)
+                    
+                    raw_text = clean_duplicate_text(a_tag.get_text(" ", strip=True))
+                    if not is_valid_real_notice(raw_text):
+                        continue
+
+                    # 고유 공고 ID(pblancId) 정밀 추출 및 상세 페이지 링크 생성
                     href = a_tag.get("href", "")
-                    link = urljoin("https://www.bizinfo.go.kr", href) if href else web_url
+                    onclick = a_tag.get("onclick", "")
+                    attr_str = href + " " + onclick
+                    
+                    pblanc_match = re.search(r"PBLN_[a-zA-Z0-9_]+", attr_str) or re.search(r"pblancId=([^&'\"]+)", attr_str)
+                    
+                    if pblanc_match:
+                        pblanc_id = pblanc_match.group(0) if "PBLN_" in pblanc_match.group(0) else pblanc_match.group(1)
+                        link = f"https://www.bizinfo.go.kr/sii/siia/selectSIIA200Detail.do?pblancId={pblanc_id}"
+                    elif href and not href.startswith("javascript") and href not in ["#", "#none"]:
+                        link = urljoin("https://www.bizinfo.go.kr", href)
+                    else:
+                        link = target_web_url
 
-                    if not is_valid_real_notice(t):
-                        continue
-                    if t in sent_history or link in sent_history:
+                    if raw_text in sent_history or link in sent_history:
                         continue
 
-                    print(f"  📢 [기업마당(웹백업) 신규 공고 발견!] {t}")
-                    add_notice_to_user_buckets(t, "기업마당", "전국", "중소기업지원", link, user_buckets, sent_history)
+                    print(f"  📢 [기업마당(웹백업) 신규 공고 발견!] {raw_text}")
+                    add_notice_to_user_buckets(raw_text, "기업마당", "전국", "중소기업지원", link, user_buckets, sent_history)
                     new_count += 1
 
                 if new_count == 0:
-                    print("  ✅ [기업마당(웹백업)] 최신 공고 변동 없음")
+                    print("  ✅ [기업마당(웹백업)] 최신 공고 변동 없음 (이미 발송 완료)")
+            else:
+                print("  ❌ [기업마당] 웹 백업 응답 없음")
         except Exception as web_err:
             print(f"  ❌ 기업마당 백업 크롤링 에러: {web_err}")
 
