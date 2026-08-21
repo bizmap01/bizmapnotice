@@ -596,7 +596,7 @@ def collect_kstartup_api(user_buckets, sent_history):
     url = f"https://apis.data.go.kr/B552735/kisedKstartupService01/getAnnouncementInformation01?serviceKey={DATA_GO_KEY}&page=1&perPage=20&returnType=json"
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-        res = requests.get(url, headers=headers, timeout=10)
+        res = requests.get(url, headers=headers, timeout=15)
         if res.status_code == 200:
             data = res.json()
             items = data.get('data', [])
@@ -627,12 +627,14 @@ def collect_kstartup_api(user_buckets, sent_history):
         print(f"  ✅ [K-Startup] 예외 처리 완료 ({e})")
 
 def collect_bizinfo_api(user_buckets, sent_history):
-    """🔥 기업마당 최신 20건 전수 순회 (부산 등 지자체 다중 신규 공고 완벽 수집)"""
+    """🔥 1차 공식 API 시도 -> 실패 시 2차 웹 직접 크롤링 백업"""
     print("\n🌐 [공식 API] 기업마당 지원사업 수집 중...")
     url = f"https://apis.data.go.kr/1421000/bizinfo/pblancBsnsService?serviceKey={DATA_GO_KEY}&pageNo=1&numOfRows=20&dataType=json"
+    api_success = False
+
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-        res = requests.get(url, headers=headers, timeout=10)
+        res = requests.get(url, headers=headers, timeout=15)
         if res.status_code == 200:
             data = res.json()
             items = data.get('jsonArray', [])
@@ -651,7 +653,7 @@ def collect_bizinfo_api(user_buckets, sent_history):
                     continue
 
                 if title in sent_history or detail_url in sent_history:
-                    continue  # 이미 처리된 공고는 스킵하고 다음 공고 계속 확인
+                    continue
 
                 print(f"  📢 [기업마당 신규 공고 발견!] {title}")
                 add_notice_to_user_buckets(title, "기업마당", "전국", "중소기업지원", detail_url, user_buckets, sent_history)
@@ -659,8 +661,39 @@ def collect_bizinfo_api(user_buckets, sent_history):
 
             if new_count == 0:
                 print("  ✅ [기업마당] 최신 공고 변동 없음 (이미 발송 완료)")
-    except Exception as e:
-        print(f"  ⚠️ [기업마당] 수집 예외: {e}")
+            api_success = True
+    except Exception:
+        print(f"  ⚠️ [기업마당 API 지연] -> 웹 직접 크롤링(2차 백업)으로 전환합니다.")
+
+    # 💡 2차 백업: API 타임아웃/오류 시 기업마당 웹페이지 직접 파싱
+    if not api_success:
+        try:
+            web_url = "https://www.bizinfo.go.kr/web/lay1/bbs/S1T122C128/AS/74/list.do"
+            res = fetch_cffi_with_retry(web_url, max_retries=2)
+            if res and res.status_code == 200:
+                soup = BeautifulSoup(res.content.decode('utf-8', errors='ignore'), "html.parser")
+                new_count = 0
+                for tr in soup.select("table.table_style01 tbody tr, tbody tr"):
+                    a_tag = tr.select_one("td.subject a, td.txt_l a, a")
+                    if not a_tag:
+                        continue
+                    t = clean_duplicate_text(a_tag.text)
+                    href = a_tag.get("href", "")
+                    link = urljoin("https://www.bizinfo.go.kr", href) if href else web_url
+
+                    if not is_valid_real_notice(t):
+                        continue
+                    if t in sent_history or link in sent_history:
+                        continue
+
+                    print(f"  📢 [기업마당(웹백업) 신규 공고 발견!] {t}")
+                    add_notice_to_user_buckets(t, "기업마당", "전국", "중소기업지원", link, user_buckets, sent_history)
+                    new_count += 1
+
+                if new_count == 0:
+                    print("  ✅ [기업마당(웹백업)] 최신 공고 변동 없음")
+        except Exception as web_err:
+            print(f"  ❌ 기업마당 백업 크롤링 에러: {web_err}")
 
 def collect_jejutp_api(user_buckets, sent_history):
     print("\n🌐 [API] 제주테크노파크 사업공고 수집 중...")
