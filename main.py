@@ -171,7 +171,7 @@ def send_dev_warning(org_name, category, target_url, dev_history):
         pass
 
 # ==========================================
-# 3. 💬 가변형 통합 알림톡 발송 엔진 (승인 템플릿 적용)
+# 3. 💬 가변형 통합 알림톡 발송 엔진 (승인 템플릿 규격 100% 일치)
 # ==========================================
 
 def is_region_matching(user_region, notice_region, title):
@@ -201,45 +201,53 @@ def is_region_matching(user_region, notice_region, title):
     return False
 
 def send_integrated_kakao_alimtalk(to_phone, user_name, matched_notices, user_region="전국", user_category="소상공인"):
-    """🔥 신규 승인 가변형 템플릿(notice_list / more_text) 완벽 매핑 발송"""
+    """🔥 승인 템플릿 본문 100% 일치 매핑 및 상세링크 문구 제거"""
     solapi_url = "https://api.solapi.com/messages/v4/send"
     headers = get_solapi_headers()
     today_str = datetime.date.today().strftime('%Y.%m.%d')
     clean_phone = ''.join(filter(str.isdigit, str(to_phone)))
     total_count = len(matched_notices)
 
-    # 💡 1~3건만 동적으로 넘버링하여 생성 (찌꺼기 문구 완전 제거)
+    # 💡 1~3건만 넘버링하여 동적 생성 ('상세링크 참조' 문구 제거)
     top_notices = matched_notices[:3]
     notice_lines = []
     for idx, item in enumerate(top_notices, 1):
         t = f"[{item['org_name']}] {item['title']}"
-        t_short = (t[:32] + '..') if len(t) > 34 else t
-        d = item.get('deadline') or '상세링크 참조'
-        notice_lines.append(f"{idx}. {t_short} (~{d})")
+        t_short = (t[:36] + '..') if len(t) > 38 else t
+        
+        # 실제 마감일 날짜가 존재하는 경우에만 (~08.30) 형태로 표시
+        d = item.get('deadline')
+        if d and d not in ['상세링크 참조', '-', '']:
+            notice_lines.append(f"{idx}. {t_short} (~{d})")
+        else:
+            notice_lines.append(f"{idx}. {t_short}")
 
     notice_list_str = "\n".join(notice_lines)
     more_text_str = f"\n\n외 {total_count - 3}건의 맞춤 공고가 더 등록되었습니다." if total_count > 3 else ""
+    user_name_val = user_name or "대표"
+    user_region_val = user_region or "전국"
+    user_category_val = user_category or "소상공인"
 
     variables = {
-        "#{고객명}": user_name or "대표",
+        "#{고객명}": user_name_val,
         "#{today_date}": today_str,
         "#{count}": str(total_count),
         "#{notice_list}": notice_list_str,
         "#{more_text}": more_text_str,
-        "#{지역}": user_region or "전국",
-        "#{업종}": user_category or "소상공인"
+        "#{지역}": user_region_val,
+        "#{업종}": user_category_val
     }
 
+    # 🔥 승인 템플릿 원문 규격과 100% 일치
     alimtalk_text = (
-        f"[비즈맵] 신규 지원사업 안내\n\n"
         f"[비즈맵] 맞춤 지원사업 공고 안내\n\n"
-        f"안녕하세요, {user_name or '대표'}님!\n\n"
+        f"안녕하세요, {user_name_val}님!\n\n"
         f"{today_str}\n"
-        f"{user_name or '대표'}님 사업장에 딱 맞는 신규 지원사업 공고가 총 {total_count}건 등록되었습니다.\n\n"
+        f"{user_name_val}님 사업장에 딱 맞는 신규 지원사업 공고가 총 {total_count}건 등록되었습니다.\n\n"
         f"📌 오늘의 주요 맞춤 공고\n"
         f"{notice_list_str}{more_text_str}\n\n"
         f"아래 버튼을 누르시면 오늘 추천된 모든 지원사업의 상세 내용과 신청 원문 링크를 한눈에 확인하실 수 있습니다.\n\n"
-        f"※ 본 메시지는 대표님께서 비즈맵 서비스 가입 시 직접 신청 및 동의하신 지원사업 맞춤 알림 조건({user_region} / {user_category})에 따라 신규 공고 발생 시 발송되는 안내 메시지입니다.\n\n"
+        f"※ 본 메시지는 대표님께서 비즈맵 서비스 가입 시 직접 신청 및 동의하신 지원사업 맞춤 알림 조건({user_region_val} / {user_category_val})에 따라 신규 공고 발생 시 발송되는 안내 메시지입니다.\n\n"
         f"※ 수신 조건 변경 및 일시정지는 [마이페이지]에서 언제든지 가능합니다."
     )
 
@@ -348,6 +356,7 @@ def fetch_with_playwright(target_url, org_name=""):
         return None
 
 def clean_duplicate_text(text):
+    """중복 텍스트 및 불필요 특수문자 정리 (지역 말머리 [부산] 등은 보존)"""
     text = " ".join(text.strip().split())
     text = text.rstrip("+>│| ").strip()
     length = len(text)
