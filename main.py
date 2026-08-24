@@ -27,9 +27,9 @@ SOLAPI_SECRET = "6YH0DTGRHVDXT4HU3RS6T0TDRINDFXH4"
 # 💡 카카오 알림톡 가동
 USE_KAKAO = True
 
-# 현재 승인 완료된 통합 알림 템플릿 정보
+# 🔥 승인 완료된 신규 가변형 알림 템플릿 정보
 SOLAPI_PF_ID = "KA01PF260805090058574q8wFwsR3MUx"
-SOLAPI_TEMPLATE_ID = "KA01TP260812073720778KfjGkb5vE9a"
+SOLAPI_TEMPLATE_ID = "KA01TP260819043733424qtJxdlyQDio"
 
 MY_PHONE = "01084687138"
 DATA_GO_KEY = "5df6886cdde7cb88e1c3e7e0e7c555002747947bf772546c112b028a77a8b81b"
@@ -171,7 +171,7 @@ def send_dev_warning(org_name, category, target_url, dev_history):
         pass
 
 # ==========================================
-# 3. 💬 통합 알림톡 발송 엔진 (현재 승인 템플릿용)
+# 3. 💬 가변형 통합 알림톡 발송 엔진 (승인 템플릿 적용)
 # ==========================================
 
 def is_region_matching(user_region, notice_region, title):
@@ -201,56 +201,43 @@ def is_region_matching(user_region, notice_region, title):
     return False
 
 def send_integrated_kakao_alimtalk(to_phone, user_name, matched_notices, user_region="전국", user_category="소상공인"):
-    """🔥 현재 승인 템플릿 규격에 맞춘 안전 발송 및 지역/업종 변수 완벽 매핑"""
+    """🔥 신규 승인 가변형 템플릿(notice_list / more_text) 완벽 매핑 발송"""
     solapi_url = "https://api.solapi.com/messages/v4/send"
     headers = get_solapi_headers()
     today_str = datetime.date.today().strftime('%Y.%m.%d')
     clean_phone = ''.join(filter(str.isdigit, str(to_phone)))
     total_count = len(matched_notices)
 
-    def get_notice_info(idx):
-        if idx < total_count:
-            item = matched_notices[idx]
-            t = f"[{item['org_name']}] {item['title']}"
-            t_short = (t[:32] + '..') if len(t) > 34 else t
-            d = item.get('deadline') or '상세링크 참조'
-            return t_short, d
-        return "(추가 공고 없음)", "-"
+    # 💡 1~3건만 동적으로 넘버링하여 생성 (찌꺼기 문구 완전 제거)
+    top_notices = matched_notices[:3]
+    notice_lines = []
+    for idx, item in enumerate(top_notices, 1):
+        t = f"[{item['org_name']}] {item['title']}"
+        t_short = (t[:32] + '..') if len(t) > 34 else t
+        d = item.get('deadline') or '상세링크 참조'
+        notice_lines.append(f"{idx}. {t_short} (~{d})")
 
-    title1, date1 = get_notice_info(0)
-    title2, date2 = get_notice_info(1)
-    title3, date3 = get_notice_info(2)
-
-    more_text = f"\n외 {total_count - 3}건의 맞춤 공고가 더 등록되었습니다." if total_count > 3 else ""
+    notice_list_str = "\n".join(notice_lines)
+    more_text_str = f"\n\n외 {total_count - 3}건의 맞춤 공고가 더 등록되었습니다." if total_count > 3 else ""
 
     variables = {
         "#{고객명}": user_name or "대표",
         "#{today_date}": today_str,
         "#{count}": str(total_count),
-        "#{title1}": title1,
-        "#{date1}": date1,
-        "#{title2}": title2,
-        "#{date2}": date2,
-        "#{title3}": title3,
-        "#{date3}": date3,
-        "#{more_text}": more_text,
+        "#{notice_list}": notice_list_str,
+        "#{more_text}": more_text_str,
         "#{지역}": user_region or "전국",
-        "#{업종}": user_category or "소상공인",
-        "#{분야}": user_category or "소상공인",
-        "#{region}": user_region or "전국",
-        "#{category}": user_category or "소상공인"
+        "#{업종}": user_category or "소상공인"
     }
 
     alimtalk_text = (
+        f"[비즈맵] 신규 지원사업 안내\n\n"
         f"[비즈맵] 맞춤 지원사업 공고 안내\n\n"
         f"안녕하세요, {user_name or '대표'}님!\n\n"
         f"{today_str}\n"
         f"{user_name or '대표'}님 사업장에 딱 맞는 신규 지원사업 공고가 총 {total_count}건 등록되었습니다.\n\n"
         f"📌 오늘의 주요 맞춤 공고\n"
-        f"1. {title1} (~{date1})\n"
-        f"2. {title2} (~{date2})\n"
-        f"3. {title3} (~{date3})\n"
-        f"{more_text}\n\n"
+        f"{notice_list_str}{more_text_str}\n\n"
         f"아래 버튼을 누르시면 오늘 추천된 모든 지원사업의 상세 내용과 신청 원문 링크를 한눈에 확인하실 수 있습니다.\n\n"
         f"※ 본 메시지는 대표님께서 비즈맵 서비스 가입 시 직접 신청 및 동의하신 지원사업 맞춤 알림 조건({user_region} / {user_category})에 따라 신규 공고 발생 시 발송되는 안내 메시지입니다.\n\n"
         f"※ 수신 조건 변경 및 일시정지는 [마이페이지]에서 언제든지 가능합니다."
@@ -361,7 +348,6 @@ def fetch_with_playwright(target_url, org_name=""):
         return None
 
 def clean_duplicate_text(text):
-    """중복 텍스트 및 불필요 특수문자 정리 (지역 말머리 [부산] 등은 보존)"""
     text = " ".join(text.strip().split())
     text = text.rstrip("+>│| ").strip()
     length = len(text)
@@ -721,7 +707,6 @@ def collect_bizinfo_api(user_buckets, sent_history):
     except Exception:
         print("  ⚠️ [기업마당 API 지연/차단] -> 웹 직접 크롤링(전수 탐색)으로 전환합니다.")
 
-    # 💡 2차/3차 웹 백업: Playwright/cffi로 웹 화면 직접 파싱 (1~3페이지)
     if not api_success:
         try:
             new_count = 0
@@ -782,7 +767,6 @@ def collect_bizinfo_api(user_buckets, sent_history):
                     else:
                         link = "https://www.bizinfo.go.kr/sii/siia/selectSIIA200View.do?schPblancDiv=01"
 
-                    # 중복 체크
                     if raw_text in sent_history:
                         continue
                     if not is_generic_url(link) and link in sent_history:
