@@ -171,7 +171,7 @@ def send_dev_warning(org_name, category, target_url, dev_history):
         pass
 
 # ==========================================
-# 3. 💬 가변형 통합 알림톡 발송 엔진 (승인 템플릿 규격 100% 일치)
+# 3. 💬 가변형 통합 알림톡 발송 엔진 (LMS Fallback 지원)
 # ==========================================
 
 def is_region_matching(user_region, notice_region, title):
@@ -200,15 +200,54 @@ def is_region_matching(user_region, notice_region, title):
         
     return False
 
+def is_category_matching(user_category, title, notice_category="", notice_region=""):
+    """🔥 업종/분야별 정밀 매칭 및 전국 특수공고(원전/농축산 등) 차단 필터"""
+    clean_cat = (user_category or "소상공인").strip()
+    
+    # 1. 극소수 특수 산업군(축산, 원전, 시멘트 등) 무조건 배제
+    niche_excludes = ["원전", "낙농", "축산", "어업", "방폭", "시멘트", "콘크리트", "선박제조", "중장비", "플랜트"]
+    if any(bad in title for bad in niche_excludes):
+        return False
+
+    # 2. '창업' / '스타트업' 유저 필터
+    if clean_cat in ["창업", "스타트업", "예비창업", "초기창업"]:
+        startup_keywords = [
+            "창업", "스타트업", "예비", "초기", "IR", "입주", "보육", "아이디어",
+            "패키지", "챌린지", "밋업", "멘토링", "청년", "엑셀러", "오픈이노베이션",
+            "피칭", "데모데이", "TIPS", "팁스", "신규", "도전", "육성", "캠퍼스", "투자"
+        ]
+        if any(k in title or k in notice_category for k in startup_keywords):
+            return True
+        # 지자체(부산 등) 지자체 기관 공고는 기본 사업화/마케팅 공고 수용
+        if notice_region not in ["전국", ""]:
+            return True
+        return False
+
+    # 3. '소상공인' / '자영업' 유저 필터
+    if clean_cat in ["소상공인", "자영업", "골목상권"]:
+        # 대형 연구개발(R&D)이나 공장 전용 과제 배제
+        large_rnd_excludes = ["선도연구소", "R&BD", "원자재분석", "산업기술개발", "기술자립"]
+        if any(bad in title for bad in large_rnd_excludes):
+            return False
+        return True
+
+    # 4. 기타 특정 업종 (제조, IT 등)
+    if clean_cat in title or clean_cat in notice_category:
+        return True
+    if notice_region not in ["전국", ""]:
+        return True
+
+    return False
+
 def send_integrated_kakao_alimtalk(to_phone, user_name, matched_notices, user_region="전국", user_category="소상공인"):
-    """🔥 승인 템플릿 본문 100% 일치 매핑 및 상세링크 문구 제거"""
+    """🔥 승인 템플릿 본문 100% 일치 매핑 & 카톡 실패 시 LMS 자동 전환(Fallback) 발송"""
     solapi_url = "https://api.solapi.com/messages/v4/send"
     headers = get_solapi_headers()
     today_str = datetime.date.today().strftime('%Y.%m.%d')
     clean_phone = ''.join(filter(str.isdigit, str(to_phone)))
     total_count = len(matched_notices)
 
-    # 💡 1~3건만 넘버링하여 동적 생성 ('상세링크 참조' 문구 제거)
+    # 💡 1~3건만 넘버링하여 동적 생성 ('상세링크 참조' 찌꺼기 문구 제거)
     top_notices = matched_notices[:3]
     notice_lines = []
     for idx, item in enumerate(top_notices, 1):
@@ -260,7 +299,7 @@ def send_integrated_kakao_alimtalk(to_phone, user_name, matched_notices, user_re
                 "pfId": SOLAPI_PF_ID,
                 "templateId": SOLAPI_TEMPLATE_ID,
                 "variables": variables,
-                "disableSms": False
+                "disableSms": False  # 🔥 카톡 실패 시 자동으로 일반 장문 문자(LMS) 대체 발송
             },
             "subject": "[비즈맵] 오늘의 맞춤 지원사업 통합 알림",
             "text": alimtalk_text
@@ -588,11 +627,16 @@ def add_notice_to_user_buckets(title, org_name, notice_region, category, target_
             keywords = [k.strip() for k in keywords.split(",")]
 
         user_region = "전국"
+        user_category = "소상공인"
+
         for kw in keywords:
             if any(r in kw for r in ["서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"]):
                 user_region = kw.strip()
+            elif any(c in kw for c in ["소상공인", "자영업", "창업", "제조", "IT", "스타트업"]):
+                user_category = kw.strip()
 
-        if is_region_matching(user_region, notice_region, title):
+        # 🔥 [지역 매칭] AND [업종/분야 정밀 매칭] 2중 검증 통과 시에만 바구니에 추가
+        if is_region_matching(user_region, notice_region, title) and is_category_matching(user_category, title, category, notice_region):
             u_data['notices'].append({
                 "title": title,
                 "org_name": org_name,
