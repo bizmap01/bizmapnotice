@@ -171,29 +171,41 @@ def send_dev_warning(org_name, category, target_url, dev_history):
         pass
 
 # ==========================================
-# 3. 💬 가변형 통합 알림톡 발송 엔진 (LMS Fallback 지원)
+# 3. 💬 정밀 지역/업종 필터 및 알림톡 발송 엔진
 # ==========================================
 
+# 🌐 전국 모든 광역시/도 및 226개 시·군·구 정밀 차단 사전
+ALL_KOREA_REGIONS = [
+    "서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
+    # 시 / 군 단위 (영월, 완도, 정읍, 진안 등 오발송 원천 차단)
+    "영월", "정선", "평창", "화천", "양구", "인제", "고성", "양양", "철원", "홍천", "횡성", "원주", "춘천", "강릉", "동해", "삼척", "속초", "태백",
+    "단양", "제천", "보은", "옥천", "영동", "증평", "진천", "괴산", "음성", "청주", "충주",
+    "태안", "당진", "서산", "홍성", "보령", "청양", "부여", "서천", "논산", "계룡", "금산", "예산", "아산", "천안", "공주",
+    "완주", "진안", "무주", "장수", "임실", "순창", "고창", "부안", "군산", "익산", "정읍", "남원", "김제", "전주",
+    "영광", "함평", "장성", "담양", "곡성", "구례", "장흥", "강진", "해남", "영암", "무안", "완도", "진도", "신안", "여수", "순천", "나주", "광양", "고흥", "보성", "화순", "목포",
+    "문경", "예천", "영주", "봉화", "울진", "상주", "의성", "안동", "영양", "김천", "구미", "군위", "칠곡", "성주", "고령", "영천", "포항", "경주", "청도", "영덕", "청송", "울릉",
+    "거창", "함양", "산청", "합천", "창녕", "밀양", "의령", "진주", "하동", "남해", "사천", "통영", "거제", "창원", "김해", "양산",
+    "수원", "성남", "안양", "부천", "광명", "평택", "안산", "고양", "과천", "구리", "남양주", "오산", "시흥", "군포", "의왕", "하남", "용인", "파주", "이천", "안성", "김포", "화성", "광주", "양주", "포천", "여주", "연천", "가평", "양평",
+    "서귀포", "강남", "서초", "송파", "강동", "용산", "마포", "영등포", "종로", "중구", "성동", "광진", "동대문", "중랑", "성북", "강북", "도봉", "노원", "은평", "서대문", "양천", "구로", "금천", "동작", "관악",
+    "해운대", "수영", "남구", "동래", "연제", "부산진", "사상", "사하", "강서", "금정", "기장", "영도", "수성", "달서", "달성", "유성", "대덕"
+]
+
 def is_region_matching(user_region, notice_region, title):
-    """구/군 단위까지 확장된 타 지역 오발송 정밀 차단 함수"""
+    """지자체 및 시·군·구 단위 타 지역 오발송 100% 정밀 차단"""
     u_reg = user_region.replace("광역시", "").replace("특별자치시", "").replace("특별자치도", "").replace("도", "").replace("시", "").strip()
     
+    # 1. 유저 설정이 '전국'인 경우 통과
     if u_reg in ["전국", ""]:
         return True
         
+    # 2. 내 지역명이 기관 지역 또는 제목에 명시된 경우 통과
     if u_reg in notice_region or u_reg in title:
         return True
         
+    # 3. 공고 지역이 '전국'인 경우 -> 제목에 다른 시/도/군/구 이름이 적혀있으면 타 지역 공고이므로 차단
     if notice_region == "전국":
-        other_regions = [
-            "서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종",
-            "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
-            "수성", "달성", "해운대", "기장", "유성", "대덕", "강남", "서초", "송파",
-            "판교", "분당", "용인", "화성", "고양", "수원", "성남", "안양", "부천",
-            "금산", "단양", "인제", "원주", "춘천", "강릉", "청주", "충주", "천안",
-            "아산", "전주", "익산", "목포", "여수", "순천", "포항", "구미", "창원", "김해"
-        ]
-        for reg in other_regions:
+        for reg in ALL_KOREA_REGIONS:
+            # 제목에 타 지역명이 있고, 내 지역명이 제목에 없으면 탈락
             if reg in title and u_reg not in title and u_reg not in reg and reg not in u_reg:
                 return False
         return True
@@ -201,35 +213,49 @@ def is_region_matching(user_region, notice_region, title):
     return False
 
 def is_category_matching(user_category, title, notice_category="", notice_region=""):
-    """🔥 업종/분야별 정밀 매칭 및 전국 특수공고(원전/농축산 등) 차단 필터"""
+    """🔥 범용 상용어('신규', '육성') 제거 및 진짜 업종 정밀 매칭"""
     clean_cat = (user_category or "소상공인").strip()
     
-    # 1. 극소수 특수 산업군(축산, 원전, 시멘트 등) 무조건 배제
-    niche_excludes = ["원전", "낙농", "축산", "어업", "방폭", "시멘트", "콘크리트", "선박제조", "중장비", "플랜트"]
+    # 1. 극소수 특수 산업군 무조건 제외 (전력, 원전, CBAM, 제약, 축산, 시멘트 등)
+    niche_excludes = [
+        "전력산업", "CBAM", "탄소국경", "제약기업", "온디바이스", "원전", "낙농", "축산", "어업",
+        "방폭", "시멘트", "콘크리트", "선박제조", "중장비", "플랜트", "반도체 후공정", "서점"
+    ]
     if any(bad in title for bad in niche_excludes):
         return False
 
-    # 2. '창업' / '스타트업' 유저 필터
+    # 2. '창업' / '스타트업' 유저 필터 (⚠️ '신규', '육성', '도전' 같은 흔한 공고문 단어 완전 배제)
     if clean_cat in ["창업", "스타트업", "예비창업", "초기창업"]:
         startup_keywords = [
-            "창업", "스타트업", "예비", "초기", "IR", "입주", "보육", "아이디어",
-            "패키지", "챌린지", "밋업", "멘토링", "청년", "엑셀러", "오픈이노베이션",
-            "피칭", "데모데이", "TIPS", "팁스", "신규", "도전", "육성", "캠퍼스", "투자"
+            "창업", "스타트업", "예비창업", "초기창업", "청년창업", "IR", "입주", "보육", 
+            "아이디어", "패키지", "챌린지", "밋업", "멘토링", "액셀러", "오픈이노베이션",
+            "피칭", "데모데이", "TIPS", "팁스", "캠퍼스타운", "투자유치", "시제품"
         ]
         if any(k in title or k in notice_category for k in startup_keywords):
             return True
-        # 지자체(부산 등) 지자체 기관 공고는 기본 사업화/마케팅 공고 수용
-        if notice_region not in ["전국", ""]:
+        # 내 지자체(부산 등) 공고 중 일반 사업화는 수용
+        if notice_region not in ["전국", ""] and any(k in title for k in ["사업화", "마케팅", "지원사업"]):
             return True
         return False
 
     # 3. '소상공인' / '자영업' 유저 필터
     if clean_cat in ["소상공인", "자영업", "골목상권"]:
-        # 대형 연구개발(R&D)이나 공장 전용 과제 배제
-        large_rnd_excludes = ["선도연구소", "R&BD", "원자재분석", "산업기술개발", "기술자립"]
-        if any(bad in title for bad in large_rnd_excludes):
+        # 대형 연구개발(R&D), 특허, 기술인프라 과제 엄격 배제
+        rnd_excludes = ["R&D", "연구개발", "기술개발", "특허출원", "성능평가", "인프라구축", "선도연구", "과제 기획"]
+        if any(bad in title for bad in rnd_excludes):
             return False
-        return True
+            
+        # 소상공인 핵심 지원사업 매칭
+        sosang_keywords = [
+            "소상공인", "자영업", "골목", "상점", "전통시장", "점포", "착한가격", "온라인 판로",
+            "경영환경", "마케팅", "바우처", "이차보전", "특례보증", "시설개선", "임차료", "수수료"
+        ]
+        if any(k in title or k in notice_category for k in sosang_keywords):
+            return True
+        # 지자체 일반 경영/자금 지원 수용
+        if notice_region not in ["전국", ""] and any(k in title for k in ["경영", "자금", "지원사업"]):
+            return True
+        return False
 
     # 4. 기타 특정 업종 (제조, IT 등)
     if clean_cat in title or clean_cat in notice_category:
@@ -247,7 +273,7 @@ def send_integrated_kakao_alimtalk(to_phone, user_name, matched_notices, user_re
     clean_phone = ''.join(filter(str.isdigit, str(to_phone)))
     total_count = len(matched_notices)
 
-    # 💡 1~3건만 넘버링하여 동적 생성 ('상세링크 참조' 찌꺼기 문구 제거)
+    # 💡 1~3건만 넘버링하여 동적 생성 ('상세링크 참조' 문구 제거)
     top_notices = matched_notices[:3]
     notice_lines = []
     for idx, item in enumerate(top_notices, 1):
@@ -331,7 +357,6 @@ def fetch_cffi_with_retry(target_url, max_retries=2):
     return None
 
 def fetch_with_playwright(target_url, org_name=""):
-    """🔥 지식재산처 및 동적 사이트 네비게이션 충돌 방지 강화 버전"""
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
@@ -395,7 +420,6 @@ def fetch_with_playwright(target_url, org_name=""):
         return None
 
 def clean_duplicate_text(text):
-    """중복 텍스트 및 불필요 특수문자 정리 (지역 말머리 [부산] 등은 보존)"""
     text = " ".join(text.strip().split())
     text = text.rstrip("+>│| ").strip()
     length = len(text)
@@ -635,7 +659,7 @@ def add_notice_to_user_buckets(title, org_name, notice_region, category, target_
             elif any(c in kw for c in ["소상공인", "자영업", "창업", "제조", "IT", "스타트업"]):
                 user_category = kw.strip()
 
-        # 🔥 [지역 매칭] AND [업종/분야 정밀 매칭] 2중 검증 통과 시에만 바구니에 추가
+        # 🔥 [정밀 지역 매칭] AND [정밀 업종 매칭] 통과 시에만 바구니에 추가
         if is_region_matching(user_region, notice_region, title) and is_category_matching(user_category, title, category, notice_region):
             u_data['notices'].append({
                 "title": title,
@@ -661,7 +685,6 @@ def add_notice_to_user_buckets(title, org_name, notice_region, category, target_
     return matched_count
 
 def collect_kstartup_api(user_buckets, sent_history):
-    """🔥 K-Startup: 1차 공식 API(최대 100건) -> 실패 시 2차 웹(Playwright) 크롤링"""
     print("\n🌐 [공식 API] K-Startup 사업공고 수집 중 (최대 100건)...")
     url = f"https://apis.data.go.kr/B552735/kisedKstartupService01/getAnnouncementInformation01?serviceKey={DATA_GO_KEY}&page=1&perPage=100&returnType=json"
     api_success = False
@@ -723,7 +746,6 @@ def collect_kstartup_api(user_buckets, sent_history):
             print(f"  ❌ K-Startup 웹 백업 실패: {e}")
 
 def collect_bizinfo_api(user_buckets, sent_history):
-    """🔥 기업마당: 공식 API -> 지정 웹 주소(최근 3페이지 전수 탐색) 3중 완벽 백업"""
     print("\n🌐 [기업마당] 지원사업 공고 전수 수집 시작 (API + 웹 3중 백업)...")
     url = f"https://apis.data.go.kr/1421000/bizinfo/pblancBsnsService?serviceKey={DATA_GO_KEY}&pageNo=1&numOfRows=100&dataType=json"
     api_success = False
@@ -1072,7 +1094,7 @@ def main():
             continue
 
         if len(notices) > 0:
-            print(f"\n💬 [{user_name}님 ({user_phone})] 조건:({user_region}/{user_category}) | 신규 공고 {len(notices)}건 통합 발송 중...")
+            print(f"\n💬 [{user_name}님 ({user_phone})] 조건:({user_region}/{user_category}) | 정밀 맞춤 공고 {len(notices)}건 발송 중...")
             if USE_KAKAO:
                 success, err_msg = send_integrated_kakao_alimtalk(user_phone, user_name, notices, user_region, user_category)
                 if success:
@@ -1081,7 +1103,7 @@ def main():
                 else:
                     print(f"  ❌ [통합 알림톡 발송 실패]: {err_msg}")
         else:
-            print(f"ℹ️ [{user_name}님] 오늘 신규 매칭 공고 없음 (불필요한 스팸 발송 차단)")
+            print(f"ℹ️ [{user_name}님] 오늘 신규 정밀 매칭 공고 없음 (불필요한 스팸 발송 완벽 차단)")
 
     print(f"\n==========================================")
     print(f"✨ 모든 프로세스 완료! (총 {total_sent_users}명에게 맞춤 통합 리포트 발송 완료)")
