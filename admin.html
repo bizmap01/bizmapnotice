@@ -38,11 +38,12 @@
 
     /* 섹션 박스 */
     .section-box { background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 24px; margin-bottom: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .section-title { font-size: 18px; font-weight: 800; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; }
+    .section-title { font-size: 18px; font-weight: 800; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
 
-    /* 테이블 스타일 */
+    /* 테이블 뷰포트 컨테이너 (스크롤 확장 & 헤더 고정) */
+    .table-container { max-height: 60vh; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 10px; position: relative; }
     table { width: 100%; border-collapse: collapse; font-size: 13.5px; text-align: left; }
-    th { background: #f8fafc; color: #475569; padding: 12px 16px; border-bottom: 2px solid #e2e8f0; font-weight: 700; }
+    thead th { position: sticky; top: 0; background: #f8fafc; color: #475569; padding: 12px 16px; border-bottom: 2px solid #e2e8f0; font-weight: 700; z-index: 2; }
     td { padding: 14px 16px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
     tr:hover { background-color: #f8fafc; }
 
@@ -51,6 +52,12 @@
     .badge-active { background: #dcfce7; color: #15803d; }
     .badge-inactive { background: #fee2e2; color: #b91c1c; }
     .badge-kw { display: inline-block; background: #eff6ff; color: #1d4ed8; padding: 2px 8px; border-radius: 6px; font-size: 12px; margin-right: 4px; margin-bottom: 4px; font-weight: 600; }
+
+    /* 컨트롤러 툴바 */
+    .table-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .search-input { padding: 8px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; outline: none; width: 260px; }
+    .btn-csv { background: #0f172a; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+    .btn-csv:hover { background: #334155; }
 
     /* 액션 버튼 */
     .btn-toggle { background: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; }
@@ -106,7 +113,7 @@
         <div id="kpi-active-users" class="number" style="color: #2563eb;">0명</div>
       </div>
       <div class="kpi-card">
-        <div class="title">누적 알림톡 발송 건수</div>
+        <div class="title">누적 알림 발송 로그 건수</div>
         <div id="kpi-total-logs" class="number" style="color: #16a34a;">0건</div>
       </div>
     </div>
@@ -115,43 +122,57 @@
     <div id="user-section" class="section-box">
       <div class="section-title">
         <span>👥 가입 유저 및 맞춤 키워드 현황</span>
+        <div class="table-toolbar">
+          <input type="text" id="user-search-input" placeholder="🔍 유저명, 이메일, 전화번호 검색..." class="search-input" oninput="filterUsers()">
+        </div>
       </div>
-      <table>
-        <thead>
-          <tr>
-            <th>회원명</th>
-            <th>이메일 / 식별 ID</th>
-            <th>로그인 수단</th>
-            <th>설정 맞춤 키워드</th>
-            <th>알림 수신 상태</th>
-            <th>가입일</th>
-            <th>관리</th>
-          </tr>
-        </thead>
-        <tbody id="user-table-body">
-          <tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 20px;">유저목록을 불러오는 중...</td></tr>
-        </tbody>
-      </table>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>회원명</th>
+              <th>이메일 / 식별 ID</th>
+              <th>로그인 수단</th>
+              <th>설정 맞춤 키워드</th>
+              <th>알림 수신 상태</th>
+              <th>가입일</th>
+              <th>관리</th>
+            </tr>
+          </thead>
+          <tbody id="user-table-body">
+            <tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 20px;">유저목록을 불러오는 중...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
-    <!-- 3. 알림톡 발송 로그 테이블 -->
+    <!-- 3. 알림톡 발송 로그 테이블 (전체 데이터 조회 및 뷰포트 확장) -->
     <div id="log-section" class="section-box">
       <div class="section-title">
-        <span>📩 실시간 알림톡 발송 성공/실패 이력</span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span>📩 실시간 알림톡 발송 로그 이력</span>
+          <span id="log-count-badge" style="font-size: 13px; font-weight: 700; color: #2563eb; background: #eff6ff; padding: 3px 10px; border-radius: 12px;">총 0건</span>
+        </div>
+        <div class="table-toolbar">
+          <input type="text" id="log-search-input" placeholder="🔍 이메일 또는 공고명 검색..." class="search-input" oninput="filterLogs()">
+          <button onclick="downloadLogsCSV()" class="btn-csv">📥 엑셀(CSV) 다운로드</button>
+        </div>
       </div>
-      <table>
-        <thead>
-          <tr>
-            <th>발송 일시</th>
-            <th>수신 유저 (이메일)</th>
-            <th>발송된 지원사업 타이틀</th>
-            <th>발송 상태</th>
-          </tr>
-        </thead>
-        <tbody id="log-table-body">
-          <tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 20px;">발송 이력을 불러오는 중...</td></tr>
-        </tbody>
-      </table>
+      <div class="table-container" style="max-height: 68vh;">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 170px;">발송 일시</th>
+              <th style="width: 230px;">수신 유저 (이메일)</th>
+              <th>발송된 지원사업 타이틀</th>
+              <th style="width: 110px; text-align: center;">발송 상태</th>
+            </tr>
+          </thead>
+          <tbody id="log-table-body">
+            <tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 30px;">발송 이력을 불러오는 중...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </main>
 
@@ -159,6 +180,9 @@
     const SUPABASE_URL = 'https://hcyvfgeaquydsvtrcnrv.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_P19tdkj74ibIy7Xdle2i4w_M1B1mhV_';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let allUsersData = [];
+    let allLogsData = [];
 
     function switchTab(tabName, element) {
       document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
@@ -205,8 +229,7 @@
       }
 
       try {
-        await fetchUsers();
-        await fetchLogs();
+        await Promise.all([fetchUsers(), fetchLogs()]);
       } catch (err) {
         alert('❌ 새로고침 중 오류 발생: ' + err.message);
       } finally {
@@ -229,12 +252,17 @@
         return;
       }
 
-      document.getElementById('kpi-total-users').innerText = `${users.length}명`;
-      const activeCount = users.filter(u => u.subscription_status !== 'inactive').length;
+      allUsersData = users || [];
+      document.getElementById('kpi-total-users').innerText = `${allUsersData.length}명`;
+      const activeCount = allUsersData.filter(u => u.subscription_status !== 'inactive').length;
       document.getElementById('kpi-active-users').innerText = `${activeCount}명`;
 
+      renderUserTable(allUsersData);
+    }
+
+    function renderUserTable(users) {
       const tbody = document.getElementById('user-table-body');
-      if (users.length === 0) {
+      if (!users || users.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 24px;">가입된 유저가 없습니다.</td></tr>';
         return;
       }
@@ -243,7 +271,6 @@
         let userPhone = '';
         const pureKeywords = [];
 
-        // 1. 키워드 배열에서 전화번호(📱 또는 숫자)만 분리 추출
         const rawKeywords = Array.isArray(user.keywords) 
           ? user.keywords 
           : (user.keywords ? user.keywords.split(',').map(k => k.trim()) : []);
@@ -253,11 +280,10 @@
           if (cleanK.includes('📱') || /^\d{9,11}$/.test(cleanK.replace(/[^0-9]/g, ''))) {
             userPhone = cleanK.replace('📱', '').trim();
           } else if (cleanK) {
-            pureKeywords.push(cleanK); // 순수 키워드만 저장
+            pureKeywords.push(cleanK);
           }
         });
 
-        // 2. 전화번호 하이픈(-) 자동 포맷팅 (010-0000-0000)
         let formattedPhone = userPhone;
         const digits = userPhone.replace(/[^0-9]/g, '');
         if (digits.length === 11) {
@@ -266,13 +292,11 @@
           formattedPhone = digits.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
         }
 
-        // 3. 이메일 아래에 전화번호 표시 태그 생성
         const emailAndPhoneHtml = `
           <div>${user.email || '이메일 없음'}</div>
           ${formattedPhone ? `<div style="font-size: 12px; color: #2563eb; font-weight: 700; margin-top: 3px;">📱 ${formattedPhone}</div>` : ''}
         `;
 
-        // 4. 순수 검색 키워드 칩 태그 생성
         const keywordsHtml = pureKeywords.length > 0 
           ? pureKeywords.map(k => `<span class="badge-kw">${k}</span>`).join('') 
           : '<span style="color: #94a3b8; font-size: 12px;">-</span>';
@@ -306,14 +330,26 @@
       }).join('');
     }
 
-    async function fetchLogs() {
-      const { data: logs, error } = await supabaseClient
-        .from('notification_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(20);
+    function filterUsers() {
+      const q = document.getElementById('user-search-input').value.toLowerCase().trim();
+      const filtered = allUsersData.filter(u => 
+        (u.name && u.name.toLowerCase().includes(q)) ||
+        (u.email && u.email.toLowerCase().includes(q)) ||
+        (JSON.stringify(u.keywords || '').toLowerCase().includes(q))
+      );
+      renderUserTable(filtered);
+    }
 
+    /* 🔥 [핵심 수정] 20건 제한 해제 -> 최대 5,000건 전체 조회 및 총 건수 정확히 카운트 */
+    async function fetchLogs() {
       const tbody = document.getElementById('log-table-body');
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 30px;">발송 이력을 불러오는 중...</td></tr>';
+
+      const { data: logs, count, error } = await supabaseClient
+        .from('notification_logs')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .limit(5000); // 💡 20건 제한 해제
 
       if (error) {
         console.error('로그 조회 실패:', error);
@@ -321,22 +357,75 @@
         return;
       }
 
+      allLogsData = logs || [];
+      const totalCount = count !== null && count !== undefined ? count : allLogsData.length;
+      document.getElementById('kpi-total-logs').innerText = `${totalCount}건`;
+      document.getElementById('log-count-badge').innerText = `총 ${allLogsData.length}건`;
+
+      renderLogTable(allLogsData);
+    }
+
+    function renderLogTable(logs) {
+      const tbody = document.getElementById('log-table-body');
       if (!logs || logs.length === 0) {
-        document.getElementById('kpi-total-logs').innerText = '0건';
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #94a3b8;">아직 발송된 이력이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 30px;">조회된 발송 이력이 없습니다.</td></tr>';
         return;
       }
 
-      document.getElementById('kpi-total-logs').innerText = `${logs.length}건`;
+      tbody.innerHTML = logs.map(log => {
+        const dateStr = new Date(log.created_at).toLocaleString('ko-KR', {
+          year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
 
-      tbody.innerHTML = logs.map(log => `
-        <tr>
-          <td>${new Date(log.created_at).toLocaleString('ko-KR')}</td>
-          <td><b>${log.email}</b></td>
-          <td>${log.title}</td>
-          <td><span class="badge-status badge-active">성공 (Sent)</span></td>
-        </tr>
-      `).join('');
+        const titleHtml = log.link 
+          ? `<a href="${log.link}" target="_blank" style="color: #0f172a; text-decoration: none; font-weight: 700;">${log.title} 🔗</a>`
+          : `<b>${log.title}</b>`;
+
+        return `
+          <tr>
+            <td style="color: #64748b; font-size: 12.5px;">${dateStr}</td>
+            <td><b>${log.email}</b></td>
+            <td>${titleHtml}</td>
+            <td style="text-align: center;"><span class="badge-status badge-active">성공 (Sent)</span></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function filterLogs() {
+      const q = document.getElementById('log-search-input').value.toLowerCase().trim();
+      const filtered = allLogsData.filter(log => 
+        (log.email && log.email.toLowerCase().includes(q)) ||
+        (log.title && log.title.toLowerCase().includes(q))
+      );
+      document.getElementById('log-count-badge').innerText = `검색 결과: ${filtered.length}건`;
+      renderLogTable(filtered);
+    }
+
+    /* 📥 발송 로그 전체 엑셀(CSV) 다운로드 함수 */
+    function downloadLogsCSV() {
+      if (allLogsData.length === 0) {
+        alert("다운로드할 발송 로그 데이터가 없습니다.");
+        return;
+      }
+
+      let csvContent = "\uFEFF발송일시,수신이메일,공고제목,원문링크\n";
+      allLogsData.forEach(row => {
+        const date = new Date(row.created_at).toLocaleString('ko-KR').replace(/,/g, '');
+        const email = (row.email || "").replace(/,/g, '');
+        const title = `"${(row.title || "").replace(/"/g, '""')}"`;
+        const link = row.link || "";
+        csvContent += `${date},${email},${title},${link}\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `bizmap_send_logs_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
 
     async function toggleUserStatus(email, nextStatus) {
