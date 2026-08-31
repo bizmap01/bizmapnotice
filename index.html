@@ -154,17 +154,17 @@
     .solution-text h4 { font-size: 19px; font-weight: 700; margin-bottom: 10px; }
     .solution-text p { color: #64748b; font-size: 15.5px; line-height: 1.65; }
 
-    .pricing-container { display: flex; justify-content: center; gap: 32px; flex-wrap: wrap; }
-    .price-card { background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 44px 32px; width: 340px; text-align: center; position: relative; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    /* 요금제 컨테이너 (단독 중앙 정렬) */
+    .pricing-container { display: flex; justify-content: center; align-items: center; }
+    .price-card { background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 44px 32px; width: 360px; max-width: 100%; text-align: center; position: relative; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
     .price-card.best { border: 2px solid #2563eb; }
-    .price-badge { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: #2563eb; color: white; padding: 4px 14px; border-radius: 12px; font-size: 12px; font-weight: 700; }
     .price-title { font-size: 20px; font-weight: 700; margin-bottom: 18px; }
     .price-amount { font-size: 36px; font-weight: 900; color: #0f172a; margin-bottom: 10px; }
     .price-amount span { font-size: 16px; font-weight: 500; color: #64748b; }
     .price-features { list-style: none; margin: 28px 0; text-align: left; font-size: 15px; color: #475569; }
     .price-features li { margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-    .btn-subscribe { display: block; width: 100%; background: #0f172a; color: white; padding: 14px; border-radius: 10px; text-decoration: none; font-weight: 700; border: none; cursor: pointer; text-align: center; }
-    .price-card.best .btn-subscribe { background: #2563eb; }
+    .btn-subscribe { display: block; width: 100%; background: #2563eb; color: white; padding: 14px; border-radius: 10px; text-decoration: none; font-weight: 700; border: none; cursor: pointer; text-align: center; font-size: 15px; transition: background 0.2s; }
+    .btn-subscribe:hover { background: #1d4ed8; }
 
     .faq-list { max-width: 840px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
     .faq-item { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 28px 32px; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
@@ -445,11 +445,12 @@
     </div>
   </section>
 
+  <!-- 💡 [수정] 6개월권 제거 및 1개월 구독권 단독 정중앙 정렬 -->
   <section id="pricing" class="section">
     <h2 class="section-title">커피 한 잔 값으로 지원사업 전담 비서를 두세요</h2>
     <div class="pricing-container">
-      <div class="price-card">
-        <div class="price-title">월간 구독</div>
+      <div class="price-card best">
+        <div class="price-title">월간 정기 구독</div>
         <div class="price-amount">3,900원 <span>/ 월</span></div>
         <ul class="price-features">
           <li>✅ 부담 없는 마이크로 결제</li>
@@ -457,19 +458,6 @@
           <li>✅ 전 지역/업종 키워드 맞춤 알림</li>
         </ul>
         <button onclick="openLoginOptionsModal()" class="btn-subscribe">월 구독 신청하기</button>
-      </div>
-
-      <div class="price-card best">
-        <span class="price-badge">추천 ⭐ 15% 할인</span>
-        <div class="price-title">6개월 구독</div>
-        <div class="price-amount">19,900원 <span>/ 6개월</span></div>
-        <p style="font-size: 13px; color: #2563eb; font-weight: 700; margin-top: -6px;">(월 3,300원 꼴)</p>
-        <ul class="price-features">
-          <li>✅ 약 15% 가격 할인 혜택</li>
-          <li>✅ 우선 맞춤 알림 발송</li>
-          <li>✅ 전 지역/업종 키워드 맞춤 알림</li>
-        </ul>
-        <button onclick="openLoginOptionsModal()" class="btn-subscribe">6개월 할인 신청하기</button>
       </div>
     </div>
   </section>
@@ -768,27 +756,19 @@
     </div>
   </div>
 
-  <!-- 2. 구독 결제 모달 -->
+  <!-- 💡 [수정] 2. 구독 결제 모달 (월 정기결제 단독 제공) -->
   <div id="payment-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 480px; text-align: center;">
       <button class="modal-close" onclick="closeModal('payment-modal')">✕</button>
-      <div class="modal-title" style="border: none; margin-bottom: 8px;">💳 구독 플랜 선택</div>
-      <p style="font-size: 14px; color: #64748b; margin-bottom: 24px;">대표님이 설정하신 맞춤 알림 조건이 등록되었습니다.<br>이용하실 결제 플랜을 선택해 주세요.</p>
+      <div class="modal-title" style="border: none; margin-bottom: 8px;">💳 정기구독 결제</div>
+      <p style="font-size: 14px; color: #64748b; margin-bottom: 24px;">대표님이 설정하신 맞춤 알림 조건이 등록되었습니다.<br>아래 버튼을 눌러 결제를 진행해 주세요.</p>
       
-      <div style="background: #f8fafc; border: 2px solid #2563eb; border-radius: 16px; padding: 20px; margin-bottom: 16px; text-align: left; cursor: pointer;" onclick="executePay('monthly')">
+      <div style="background: #f8fafc; border: 2px solid #2563eb; border-radius: 16px; padding: 20px; margin-bottom: 24px; text-align: left;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <span style="font-weight: 800; font-size: 17px;">월간 정기 구독</span>
           <span style="font-size: 20px; font-weight: 900; color: #2563eb;">3,900원 <span style="font-size: 13px; font-weight: 500; color: #64748b;">/ 월</span></span>
         </div>
-        <p style="font-size: 12px; color: #64748b; margin-top: 6px;">• 부담 없는 월 정기결제, 언제든 자유로운 해지</p>
-      </div>
-
-      <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 16px; padding: 20px; margin-bottom: 24px; text-align: left; cursor: pointer;" onclick="executePay('6months')">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-weight: 800; font-size: 17px;">6개월 정기 구독 ⭐ <span style="font-size: 12px; color: #ef4444;">15% 할인</span></span>
-          <span style="font-size: 20px; font-weight: 900; color: #0f172a;">19,900원 <span style="font-size: 13px; font-weight: 500; color: #64748b;">/ 6개월</span></span>
-        </div>
-        <p style="font-size: 12px; color: #64748b; margin-top: 6px;">• 월 3,300원 꼴, 최우선 맞춤 알림톡 발송</p>
+        <p style="font-size: 12px; color: #64748b; margin-top: 6px;">• 부담 없는 월 정기결제, 언제든 자유로운 해지 가능</p>
       </div>
 
       <button onclick="executePay('monthly')" style="width: 100%; background: #fee500; color: #000; padding: 15px; border: none; border-radius: 12px; font-weight: 800; font-size: 16px; cursor: pointer;">
@@ -891,7 +871,7 @@
     </div>
   </div>
 
-  <!-- 4. 이용약관 전문 모달 -->
+  <!-- 4. 이용약관 전문 모달 (PG 심사 대비 월간 요금으로 통일) -->
   <div id="terms-modal" class="modal-overlay">
     <div class="modal-content">
       <button class="modal-close" onclick="closeModal('terms-modal')">✕</button>
@@ -903,7 +883,7 @@
         <h3>제2조 (용어의 정의)</h3>
         <p>① "서비스"란 회사가 회원에게 카카오톡, 이메일, 웹사이트 등을 통해 정부 및 지자체 지원사업 공고 정보를 맞춤형으로 안내하는 모든 알림 서비스를 의미합니다.<br>
         ② "회원"이란 본 약관에 동의하고 회사가 정한 회원가입 절차를 거쳐 서비스를 이용하는 이용자를 말합니다.<br>
-        ③ "구독"이란 회원이 서비스 수신을 위해 월간 또는 6개월 단위로 일정 금액을 정기적으로 결제하여 이용하는 행위를 말합니다.</p>
+        ③ "구독"이란 회원이 서비스 수신을 위해 월간 단위로 일정 금액을 정기적으로 결제하여 이용하는 행위를 말합니다.</p>
 
         <h3>제3조 (약관의 게시와 개정)</h3>
         <p>① 회사는 본 약관의 내용을 회원이 쉽게 알 수 있도록 서비스 화면 내에 게시합니다.<br>
@@ -919,7 +899,7 @@
         ③ 회사는 천재지변, 공공기관 서버 오류, 기타 불가항력적인 사유로 인한 서비스 제공 중단에 대하여 책임을 지지 않습니다.</p>
 
         <h3>제6조 (구독 요금 및 정기결제)</h3>
-        <p>① 서비스 구독 요금은 월간 정기구독(3,900원/월) 및 6개월 정기구독(19,900원/6개월)으로 구성되며, 결제 수단에 따라 정기적으로 자동 갱신 결제됩니다.<br>
+        <p>① 서비스 구독 요금은 월간 정기구독(3,900원/월)으로 구성되며, 결제 수단에 따라 정기적으로 자동 갱신 결제됩니다.<br>
         ② 이용 요금의 변경 시 회사는 최소 30일 전에 회원에게 개별 고지합니다.</p>
 
         <h3>제7조 (청약철회 및 환불 정책)</h3>
@@ -1639,8 +1619,8 @@
         return;
       }
 
-      const price = planType === 'monthly' ? 3900 : 19900;
-      const planName = planType === 'monthly' ? '비즈맵 지원사업 알림 (월간 정기구독)' : '비즈맵 지원사업 알림 (6개월 정기구독)';
+      const price = 3900;
+      const planName = '비즈맵 지원사업 알림 (월간 정기구독)';
       const userEmail = currentKakaoUser.kakao_account?.email || `user_${currentKakaoUser.id}@bizmap.local`;
       const userName = currentKakaoUser.properties?.nickname || '구독자';
 
