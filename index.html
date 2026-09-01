@@ -692,7 +692,6 @@
       <div class="modal-title">🎯 맞춤 알림 조건 설정</div>
       <div class="modal-body">
         
-        <!-- 🔥 카카오에서 가져온 번호가 자동 세팅됨 -->
         <div id="phone-input-group" class="form-group" style="background: #eff6ff; border: 1.5px solid #bfdbfe; padding: 14px; border-radius: 12px; margin-bottom: 18px;">
           <label class="form-label" style="color: #1e40af; font-size: 14px;">📱 카카오톡 알림 수신 휴대폰 번호 <span style="color: #ef4444; font-weight: 800;">(필수)</span></label>
           <input type="tel" id="user-phone-number" placeholder="예: 01012345678 (- 없이 입력)" class="text-input" autocomplete="off" style="font-size: 15px; font-weight: 700;">
@@ -776,7 +775,7 @@
     </div>
   </div>
 
-  <!-- 3. 유저 마이페이지 모달 (상단 번호 표기 및 수정 인풋 완벽 탑재) -->
+  <!-- 3. 유저 마이페이지 모달 (전화번호 자동 바인딩 로직 완벽 개선) -->
   <div id="mypage-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 520px;">
       <button class="modal-close" onclick="closeModal('mypage-modal')">✕</button>
@@ -805,7 +804,7 @@
           </div>
         </div>
 
-        <!-- 🔥 번호 수정 입력 필드 -->
+        <!-- 💡 휴대폰 번호 입력 및 자동 노출 필드 -->
         <div class="form-group">
           <label class="form-label">📱 알림 수신 휴대폰 번호 <span style="color: #ef4444; font-weight: 800;">(필수)</span></label>
           <input type="tel" id="mypage-phone" placeholder="예: 01012345678 (- 없이 입력)" class="text-input" style="font-weight: 700;">
@@ -1255,7 +1254,7 @@
       }
     }
 
-    // 🔥 [핵심 수정] scope 파라미터로 전화번호, 이름, 이메일 권한 명시적 수집
+    // 💡 카카오 전화번호 자동 파싱
     function loginWithKakao() {
       currentKakaoUser = null;
       authProviderType = 'kakao';
@@ -1268,7 +1267,6 @@
               const kakaoAccount = res.kakao_account || {};
               let extractedPhone = '';
               if (kakaoAccount.phone_number) {
-                // +82 10-1234-5678 -> 01012345678 변환
                 extractedPhone = kakaoAccount.phone_number.replace('+82 ', '0').replace(/[^0-9]/g, '');
               }
 
@@ -1681,6 +1679,7 @@
       });
     }
 
+    /* 🔥 [핵심 수정] 마이페이지 열릴 때 카카오 번호 무조건 100% 자동 바인딩 */
     async function openMyPage() {
       if (!currentKakaoUser) {
         openLoginOptionsModal();
@@ -1757,13 +1756,15 @@
         if (unpaidNotice) unpaidNotice.style.display = 'block';
       }
 
+      // 🔥 [핵심] 카카오 세션에 있는 번호를 기본값으로 우선 설정
+      let foundPhone = (currentKakaoUser && currentKakaoUser.phone) ? currentKakaoUser.phone : "";
+      let foundRegion = "전국";
+      let foundCategory = "소상공인";
+      let detailKwList = [];
+
+      // DB에 기존 저장된 키워드가 있으면 DB 값으로 우선 덮어씀
       if (data && data.keywords) {
         const rawKwList = Array.isArray(data.keywords) ? data.keywords : data.keywords.split(',').map(k => k.trim());
-        
-        let foundRegion = "전국";
-        let foundCategory = "소상공인";
-        let foundPhone = "";
-        let detailKwList = [];
 
         rawKwList.forEach(k => {
           const normReg = normalizeRegion(k);
@@ -1779,43 +1780,40 @@
             if (k && k.length > 0) detailKwList.push(k);
           }
         });
-
-        if (!foundPhone && currentKakaoUser && currentKakaoUser.phone) {
-          foundPhone = currentKakaoUser.phone;
-        }
-
-        // 전화번호 포맷팅 (010-XXXX-XXXX)
-        let formattedPhone = foundPhone;
-        const digits = foundPhone.replace(/[^0-9]/g, '');
-        if (digits.length === 11) {
-          formattedPhone = digits.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
-        } else if (digits.length === 10) {
-          formattedPhone = digits.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
-        }
-
-        const phoneDisplay = document.getElementById('mypage-user-phone-display');
-        if (phoneDisplay) {
-          phoneDisplay.innerText = formattedPhone ? `📱 ${formattedPhone}` : '등록된 번호 없음 (아래에서 입력)';
-        }
-
-        const phoneInput = document.getElementById('mypage-phone');
-        if (phoneInput) {
-          phoneInput.value = foundPhone;
-        }
-
-        document.getElementById('mypage-region').value = foundRegion;
-
-        mypageCategory = foundCategory;
-        document.querySelectorAll('#mypage-category-chips .chip-btn').forEach(b => {
-          if (b.getAttribute('data-cat') === foundCategory) {
-            b.classList.add('active');
-          } else {
-            b.classList.remove('active');
-          }
-        });
-
-        document.getElementById('mypage-detail-kw').value = detailKwList.join(', ');
       }
+
+      // 전화번호 포맷팅 (010-XXXX-XXXX)
+      const cleanPhoneDigits = foundPhone.replace(/[^0-9]/g, '');
+      let formattedPhone = foundPhone;
+      if (cleanPhoneDigits.length === 11) {
+        formattedPhone = cleanPhoneDigits.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
+      } else if (cleanPhoneDigits.length === 10) {
+        formattedPhone = cleanPhoneDigits.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+      }
+
+      // 상단 박스 번호 표시 & 입력창 자동 채우기 (무조건 실행)
+      const phoneDisplay = document.getElementById('mypage-user-phone-display');
+      if (phoneDisplay) {
+        phoneDisplay.innerText = formattedPhone ? `📱 ${formattedPhone}` : '등록된 번호 없음 (아래에서 입력)';
+      }
+
+      const phoneInput = document.getElementById('mypage-phone');
+      if (phoneInput) {
+        phoneInput.value = cleanPhoneDigits || foundPhone;
+      }
+
+      document.getElementById('mypage-region').value = foundRegion;
+
+      mypageCategory = foundCategory;
+      document.querySelectorAll('#mypage-category-chips .chip-btn').forEach(b => {
+        if (b.getAttribute('data-cat') === foundCategory) {
+          b.classList.add('active');
+        } else {
+          b.classList.remove('active');
+        }
+      });
+
+      document.getElementById('mypage-detail-kw').value = detailKwList.join(', ');
     }
 
     async function cancelSubscription() {
