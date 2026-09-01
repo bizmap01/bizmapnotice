@@ -154,7 +154,6 @@
     .solution-text h4 { font-size: 19px; font-weight: 700; margin-bottom: 10px; }
     .solution-text p { color: #64748b; font-size: 15.5px; line-height: 1.65; }
 
-    /* 요금제 컨테이너 (단독 중앙 정렬) */
     .pricing-container { display: flex; justify-content: center; align-items: center; }
     .price-card { background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 44px 32px; width: 360px; max-width: 100%; text-align: center; position: relative; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
     .price-card.best { border: 2px solid #2563eb; }
@@ -333,7 +332,7 @@
     <div id="auth-nav">
       <button id="nav-login-btn" onclick="openLoginOptionsModal()" class="btn-login">시작하기</button>
       
-      <!-- 📢 [신규] 로그인 시 노출되는 핵심 버튼 그룹 -->
+      <!-- 📢 로그인 시 노출되는 버튼 그룹 -->
       <button id="nav-today-btn" onclick="openTodayNoticesModal()" class="btn-today-nav" style="display: none;">📢 맞춤 지원사업</button>
       <button id="nav-mypage-btn" onclick="openMyPage()" class="btn-mypage-nav" style="display: none;">👤 내 알림 설정</button>
       <button id="nav-logout-btn" onclick="logoutWithKakao()" class="btn-logout-nav" style="display: none;">로그아웃</button>
@@ -445,7 +444,6 @@
     </div>
   </section>
 
-  <!-- 💡 [수정] 6개월권 제거 및 1개월 구독권 단독 정중앙 정렬 -->
   <section id="pricing" class="section">
     <h2 class="section-title">커피 한 잔 값으로 지원사업 전담 비서를 두세요</h2>
     <div class="pricing-container">
@@ -483,7 +481,7 @@
       </div>
       <div class="faq-item">
         <div class="faq-q"><span>Q.</span> 알림톡은 하루에 몇 번 정도 날아오나요?</div>
-        <div class="faq-a">신규 지원사업 공고가 등록되는 매일 오전 8:00 ~ 10:00 사이에 발송됩니다. 조건에 일치하는 신규 공고가 없는 날에는 무분별한 스팸 메시지가 발송되지 않습니다.</div>
+        <div class="faq-a">신규 지원사업 공고가 등록되는 매일 정해진 시간(오전)에 맞춰 발송됩니다. 조건에 일치하는 신규 공고가 없는 날에는 무분별한 스팸 메시지가 발송되지 않습니다.</div>
       </div>
     </div>
   </section>
@@ -694,10 +692,11 @@
       <div class="modal-title">🎯 맞춤 알림 조건 설정</div>
       <div class="modal-body">
         
-        <div id="phone-input-group" class="form-group" style="display: none; background: #fffbebfb; border: 1px solid #fcd34d; padding: 12px; border-radius: 10px;">
-          <label class="form-label" style="color: #b45309;">📱 카카오톡 수신 휴대폰 번호 <span style="color: #ef4444; font-weight: 800;">(필수)</span></label>
-          <input type="tel" id="user-phone-number" placeholder="예: 01012345678 (- 없이 입력)" class="text-input" autocomplete="off">
-          <p style="font-size: 11px; color: #b45309; margin-top: 4px;">* 카카오 알림톡 및 문자 수신에 사용됩니다.</p>
+        <!-- 💡 카카오에서 받아온 번호가 자동 세팅되며 직접 수정도 가능 -->
+        <div id="phone-input-group" class="form-group" style="background: #eff6ff; border: 1.5px solid #bfdbfe; padding: 14px; border-radius: 12px; margin-bottom: 18px;">
+          <label class="form-label" style="color: #1e40af; font-size: 14px;">📱 카카오톡 알림 수신 휴대폰 번호 <span style="color: #ef4444; font-weight: 800;">(필수)</span></label>
+          <input type="tel" id="user-phone-number" placeholder="예: 01012345678 (- 없이 입력)" class="text-input" autocomplete="off" style="font-size: 15px; font-weight: 700;">
+          <p style="font-size: 12px; color: #2563eb; margin-top: 6px;">* 매일 아침 맞춤 지원사업 알림톡을 받아보실 번호입니다.</p>
         </div>
 
         <div class="form-group">
@@ -756,7 +755,7 @@
     </div>
   </div>
 
-  <!-- 💡 [수정] 2. 구독 결제 모달 (월 정기결제 단독 제공) -->
+  <!-- 2. 구독 결제 모달 -->
   <div id="payment-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 480px; text-align: center;">
       <button class="modal-close" onclick="closeModal('payment-modal')">✕</button>
@@ -803,6 +802,12 @@
             <button id="mypage-pay-btn" onclick="closeModal('mypage-modal'); openModal('payment-modal');" style="display: none; width: 100%; background: #2563eb; color: white; border: none; padding: 10px; border-radius: 8px; font-size: 13.5px; font-weight: 800; cursor: pointer;">💳 구독 결제하기</button>
             <button id="mypage-cancel-sub-btn" onclick="cancelSubscription()" style="display: none; width: 100%; background: #ffffff; color: #ef4444; border: 1px solid #fca5a5; padding: 9px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer;">❌ 구독 해지 (자동결제 취소)</button>
           </div>
+        </div>
+
+        <!-- 💡 마이페이지 전화번호 수정 필드 -->
+        <div class="form-group">
+          <label class="form-label">📱 알림 수신 휴대폰 번호 <span style="color: #ef4444; font-weight: 800;">(필수)</span></label>
+          <input type="tel" id="mypage-phone" placeholder="예: 01012345678 (- 없이 입력)" class="text-input" style="font-weight: 700;">
         </div>
 
         <div class="form-group">
@@ -871,7 +876,7 @@
     </div>
   </div>
 
-  <!-- 4. 이용약관 전문 모달 (PG 심사 대비 월간 요금으로 통일) -->
+  <!-- 4. 이용약관 전문 모달 -->
   <div id="terms-modal" class="modal-overlay">
     <div class="modal-content">
       <button class="modal-close" onclick="closeModal('terms-modal')">✕</button>
@@ -1037,7 +1042,7 @@
       const idsToClear = [
         'signup-name-val', 'signup-phone-val', 'signup-email-val', 'signup-pass-val',
         'login-email-val', 'login-pass-val', 'user-phone-number', 'onboarding-detail-kw',
-        'find-id-name', 'find-id-phone', 'find-pw-email', 'find-pw-phone'
+        'find-id-name', 'find-id-phone', 'find-pw-email', 'find-pw-phone', 'mypage-phone'
       ];
       idsToClear.forEach(elemId => {
         const el = id(elemId);
@@ -1054,7 +1059,6 @@
       });
     }
 
-    // 🌐 수파베이스 세션 체크 및 ?today=true 접속 시 날짜별 공고 리스트 자동 오픈
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
       if (session && session.user) {
         const user = session.user;
@@ -1078,7 +1082,6 @@
       }
     });
 
-    // 📢 [핵심] 최근 7일간의 공고를 날짜별(타임라인)로 그룹화하여 렌더링
     async function openTodayNoticesModal() {
       if (!currentKakaoUser) {
         openLoginOptionsModal();
@@ -1091,7 +1094,6 @@
       openModal('today-notices-modal');
       container.innerHTML = '<p style="text-align: center; color: #94a3b8; padding: 30px 0;">맞춤 공고 목록을 불러오는 중입니다...</p>';
 
-      // 최근 7일 전 타임스탬프 계산
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
       const { data: logs, error } = await supabaseClient
@@ -1104,7 +1106,6 @@
       if (logs && logs.length > 0) {
         const todayStr = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/ /g, '');
         
-        // 날짜별 그룹핑
         const dateGroups = {};
         logs.forEach(item => {
           const itemDate = new Date(item.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/ /g, '');
@@ -1253,6 +1254,7 @@
       }
     }
 
+    // 💡 [핵심] 카카오 전화번호(+82 10-xxxx-xxxx -> 010xxxxxxxx) 자동 추출
     function loginWithKakao() {
       currentKakaoUser = null;
       authProviderType = 'kakao';
@@ -1261,7 +1263,21 @@
           Kakao.API.request({
             url: '/v2/user/me',
             success: async function(res) {
-              currentKakaoUser = res;
+              const kakaoAccount = res.kakao_account || {};
+              let extractedPhone = '';
+              if (kakaoAccount.phone_number) {
+                extractedPhone = kakaoAccount.phone_number.replace('+82 ', '0').replace(/[^0-9]/g, '');
+              }
+
+              currentKakaoUser = {
+                id: res.id,
+                kakao_account: { email: kakaoAccount.email },
+                properties: { 
+                  nickname: res.properties?.nickname || kakaoAccount.name || (kakaoAccount.email ? kakaoAccount.email.split('@')[0] : '카카오회원') 
+                },
+                phone: extractedPhone
+              };
+
               closeModal('login-choice-modal');
               updateUIOnLogin();
 
@@ -1269,7 +1285,7 @@
               if (isTodayRedirect) {
                 openTodayNoticesModal();
               } else {
-                await checkUserOnboard(res);
+                await checkUserOnboard(currentKakaoUser);
               }
             },
             fail: function(error) { alert('카카오 정보 조회 실패: ' + JSON.stringify(error)); }
@@ -1490,8 +1506,12 @@
           .maybeSingle();
 
         if (existingUser && existingUser.keywords && existingUser.keywords.length > 0) {
-          openTodayNoticesModal();
-          return;
+          const kwStr = Array.isArray(existingUser.keywords) ? existingUser.keywords.join(' ') : existingUser.keywords;
+          // 전화번호가 이미 정상 등록되어 있는 경우 바로 모달 오픈
+          if (kwStr.includes('📱') || /\d{9,11}/.test(kwStr)) {
+            openTodayNoticesModal();
+            return;
+          }
         }
       } catch (err) {
         console.error("User onboard check error:", err);
@@ -1500,15 +1520,12 @@
       id('onboarding-region').value = '전국';
       id('onboarding-detail-kw').value = '';
 
-      if (authProviderType !== 'kakao') {
-        document.getElementById('phone-input-group').style.display = 'block';
-        if (userRes.phone) {
-          document.getElementById('user-phone-number').value = userRes.phone;
-        } else {
-          document.getElementById('user-phone-number').value = '';
-        }
+      // 💡 카카오에서 추출한 번호가 있으면 자동으로 인풋에 채워둠
+      document.getElementById('phone-input-group').style.display = 'block';
+      if (userRes.phone) {
+        document.getElementById('user-phone-number').value = userRes.phone;
       } else {
-        document.getElementById('phone-input-group').style.display = 'none';
+        document.getElementById('user-phone-number').value = '';
       }
       
       openModal('keyword-modal');
@@ -1562,23 +1579,22 @@
         return;
       }
 
-      let phoneVal = '';
-      if (authProviderType !== 'kakao') {
-        phoneVal = document.getElementById('user-phone-number').value.trim();
-        if (!phoneVal) {
-          alert('카카오톡 알림톡 및 문자 수신을 위해 휴대폰 번호를 입력해 주세요.');
-          document.getElementById('user-phone-number').focus();
-          return;
-        }
+      // 💡 온보딩 인풋값 우선 확인 -> 비어있으면 카카오에서 넘겨받은 phone 속성 사용
+      let phoneVal = document.getElementById('user-phone-number').value.trim();
+      if (!phoneVal && currentKakaoUser.phone) {
+        phoneVal = currentKakaoUser.phone;
+      }
+
+      if (!phoneVal || phoneVal.replace(/[^0-9]/g, '').length < 9) {
+        alert('카카오톡 알림톡 수신을 위해 휴대폰 번호를 올바르게 입력해 주세요.');
+        document.getElementById('user-phone-number').focus();
+        return;
       }
 
       const region = document.getElementById('onboarding-region').value;
       const detailKw = document.getElementById('onboarding-detail-kw').value.trim();
       
-      let combinedKeywords = [region, onboardingCategory];
-      if (phoneVal) {
-        combinedKeywords.push(`📱 ${phoneVal}`);
-      }
+      let combinedKeywords = [region, onboardingCategory, `📱 ${phoneVal.replace(/[^0-9]/g, '')}`];
       if (detailKw) {
         detailKw.split(',').forEach(k => {
           if (k.trim()) combinedKeywords.push(k.trim());
@@ -1746,6 +1762,7 @@
         
         let foundRegion = "전국";
         let foundCategory = "소상공인";
+        let foundPhone = "";
         let detailKwList = [];
 
         rawKwList.forEach(k => {
@@ -1757,11 +1774,18 @@
           } else if (normCat) {
             foundCategory = normCat;
           } else if (k.includes('📱') || /^\d{9,11}$/.test(k.replace(/[^0-9]/g, ''))) {
+            foundPhone = k.replace('📱', '').trim();
           } else {
             if (k && k.length > 0) detailKwList.push(k);
           }
         });
 
+        // 💡 DB에 저장된 휴대폰 번호가 없으면 카카오 객체의 phone 사용
+        if (!foundPhone && currentKakaoUser && currentKakaoUser.phone) {
+          foundPhone = currentKakaoUser.phone;
+        }
+
+        document.getElementById('mypage-phone').value = foundPhone;
         document.getElementById('mypage-region').value = foundRegion;
 
         mypageCategory = foundCategory;
@@ -1804,29 +1828,24 @@
       const email = currentKakaoUser.kakao_account?.email || `user_${currentKakaoUser.id}@bizmap.local`;
       const name = currentKakaoUser.properties?.nickname || '사용자';
 
+      const phoneInput = document.getElementById('mypage-phone').value.trim();
+      if (!phoneInput || phoneInput.replace(/[^0-9]/g, '').length < 9) {
+        alert('카카오톡 알림톡을 수신할 휴대폰 번호를 올바르게 입력해 주세요.');
+        document.getElementById('mypage-phone').focus();
+        return;
+      }
+
       const { data: userData } = await supabaseClient
         .from('users')
         .select('keywords, subscription_status')
         .eq('email', email)
         .maybeSingle();
 
-      let phoneKw = '';
-      let isPaidUser = false;
-
-      if (userData) {
-        isPaidUser = userData.subscription_status === 'active';
-        if (userData.keywords) {
-          const existingKw = Array.isArray(userData.keywords) ? userData.keywords : userData.keywords.split(',');
-          const foundPhone = existingKw.find(k => k.includes('📱'));
-          if (foundPhone) phoneKw = foundPhone.trim();
-        }
-      }
-
+      const isPaidUser = userData ? (userData.subscription_status === 'active') : false;
       const region = document.getElementById('mypage-region').value;
       const detailKw = document.getElementById('mypage-detail-kw').value.trim();
       
-      let combinedKeywords = [region, mypageCategory];
-      if (phoneKw) combinedKeywords.push(phoneKw);
+      let combinedKeywords = [region, mypageCategory, `📱 ${phoneInput.replace(/[^0-9]/g, '')}`];
 
       if (detailKw) {
         detailKw.split(',').forEach(k => {
@@ -1855,7 +1874,7 @@
         msgDiv.innerText = '❌ 저장 실패: ' + error.message;
       } else {
         msgDiv.style.color = '#16a34a';
-        msgDiv.innerText = '✅ 설정이 성공적으로 저장되었습니다!';
+        msgDiv.innerText = '✅ 설정 및 휴대폰 번호가 성공적으로 저장되었습니다!';
         setTimeout(() => { closeModal('mypage-modal'); }, 1000);
       }
     }
