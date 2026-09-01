@@ -692,7 +692,7 @@
       <div class="modal-title">🎯 맞춤 알림 조건 설정</div>
       <div class="modal-body">
         
-        <!-- 💡 카카오에서 받아온 번호가 자동 세팅되며 직접 수정도 가능 -->
+        <!-- 🔥 카카오에서 가져온 번호가 자동 세팅됨 -->
         <div id="phone-input-group" class="form-group" style="background: #eff6ff; border: 1.5px solid #bfdbfe; padding: 14px; border-radius: 12px; margin-bottom: 18px;">
           <label class="form-label" style="color: #1e40af; font-size: 14px;">📱 카카오톡 알림 수신 휴대폰 번호 <span style="color: #ef4444; font-weight: 800;">(필수)</span></label>
           <input type="tel" id="user-phone-number" placeholder="예: 01012345678 (- 없이 입력)" class="text-input" autocomplete="off" style="font-size: 15px; font-weight: 700;">
@@ -776,7 +776,7 @@
     </div>
   </div>
 
-  <!-- 3. 유저 마이페이지 모달 -->
+  <!-- 3. 유저 마이페이지 모달 (상단 번호 표기 및 수정 인풋 완벽 탑재) -->
   <div id="mypage-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 520px;">
       <button class="modal-close" onclick="closeModal('mypage-modal')">✕</button>
@@ -786,6 +786,7 @@
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin-bottom: 16px; font-size: 14px;">
           <p><b>회원명:</b> <span id="mypage-user-name">불러오는 중...</span></p>
           <p style="margin-top: 4px;"><b>로그인 계정:</b> <span id="mypage-user-email" style="color: #2563eb; font-weight: 700;">불러오는 중...</span></p>
+          <p style="margin-top: 4px;"><b>알림 수신 번호:</b> <span id="mypage-user-phone-display" style="color: #2563eb; font-weight: 700;">불러오는 중...</span></p>
           <p style="margin-top: 4px;"><b>로그인 수단:</b> <span id="mypage-user-provider" style="background: #eff6ff; color: #1d4ed8; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">불러오는 중...</span></p>
           <p style="margin-top: 4px;"><b>알림 상태:</b> <span id="mypage-status-badge" style="padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;">불러오는 중...</span></p>
         </div>
@@ -804,7 +805,7 @@
           </div>
         </div>
 
-        <!-- 💡 마이페이지 전화번호 수정 필드 -->
+        <!-- 🔥 번호 수정 입력 필드 -->
         <div class="form-group">
           <label class="form-label">📱 알림 수신 휴대폰 번호 <span style="color: #ef4444; font-weight: 800;">(필수)</span></label>
           <input type="tel" id="mypage-phone" placeholder="예: 01012345678 (- 없이 입력)" class="text-input" style="font-weight: 700;">
@@ -1254,11 +1255,12 @@
       }
     }
 
-    // 💡 [핵심] 카카오 전화번호(+82 10-xxxx-xxxx -> 010xxxxxxxx) 자동 추출
+    // 🔥 [핵심 수정] scope 파라미터로 전화번호, 이름, 이메일 권한 명시적 수집
     function loginWithKakao() {
       currentKakaoUser = null;
       authProviderType = 'kakao';
       Kakao.Auth.login({
+        scope: 'profile_nickname,account_email,name,phone_number',
         success: function(authObj) {
           Kakao.API.request({
             url: '/v2/user/me',
@@ -1266,6 +1268,7 @@
               const kakaoAccount = res.kakao_account || {};
               let extractedPhone = '';
               if (kakaoAccount.phone_number) {
+                // +82 10-1234-5678 -> 01012345678 변환
                 extractedPhone = kakaoAccount.phone_number.replace('+82 ', '0').replace(/[^0-9]/g, '');
               }
 
@@ -1507,7 +1510,6 @@
 
         if (existingUser && existingUser.keywords && existingUser.keywords.length > 0) {
           const kwStr = Array.isArray(existingUser.keywords) ? existingUser.keywords.join(' ') : existingUser.keywords;
-          // 전화번호가 이미 정상 등록되어 있는 경우 바로 모달 오픈
           if (kwStr.includes('📱') || /\d{9,11}/.test(kwStr)) {
             openTodayNoticesModal();
             return;
@@ -1520,7 +1522,6 @@
       id('onboarding-region').value = '전국';
       id('onboarding-detail-kw').value = '';
 
-      // 💡 카카오에서 추출한 번호가 있으면 자동으로 인풋에 채워둠
       document.getElementById('phone-input-group').style.display = 'block';
       if (userRes.phone) {
         document.getElementById('user-phone-number').value = userRes.phone;
@@ -1579,7 +1580,6 @@
         return;
       }
 
-      // 💡 온보딩 인풋값 우선 확인 -> 비어있으면 카카오에서 넘겨받은 phone 속성 사용
       let phoneVal = document.getElementById('user-phone-number').value.trim();
       if (!phoneVal && currentKakaoUser.phone) {
         phoneVal = currentKakaoUser.phone;
@@ -1780,12 +1780,29 @@
           }
         });
 
-        // 💡 DB에 저장된 휴대폰 번호가 없으면 카카오 객체의 phone 사용
         if (!foundPhone && currentKakaoUser && currentKakaoUser.phone) {
           foundPhone = currentKakaoUser.phone;
         }
 
-        document.getElementById('mypage-phone').value = foundPhone;
+        // 전화번호 포맷팅 (010-XXXX-XXXX)
+        let formattedPhone = foundPhone;
+        const digits = foundPhone.replace(/[^0-9]/g, '');
+        if (digits.length === 11) {
+          formattedPhone = digits.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
+        } else if (digits.length === 10) {
+          formattedPhone = digits.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+        }
+
+        const phoneDisplay = document.getElementById('mypage-user-phone-display');
+        if (phoneDisplay) {
+          phoneDisplay.innerText = formattedPhone ? `📱 ${formattedPhone}` : '등록된 번호 없음 (아래에서 입력)';
+        }
+
+        const phoneInput = document.getElementById('mypage-phone');
+        if (phoneInput) {
+          phoneInput.value = foundPhone;
+        }
+
         document.getElementById('mypage-region').value = foundRegion;
 
         mypageCategory = foundCategory;
