@@ -265,6 +265,32 @@ def is_category_matching(user_category, title, notice_category="", notice_region
 
     return False
 
+def get_notice_priority(item):
+    """
+    📌 상위 공고 요약용 우선순위 산출 함수
+    1순위: 지역 테크노파크(TP) 및 경제진흥원
+    2순위: 창업지원사업 및 K-Startup
+    3순위: 기업마당 API 및 기타 공고
+    """
+    org = item.get('org_name', '')
+    title = item.get('title', '')
+    
+    # 1순위: 지역 테크노파크 및 경제진흥원
+    tp_keywords = ["테크노파크", "경제진흥원", "TP", "경제통상진흥원", "창조경제혁신센터"]
+    if any(k in org for k in tp_keywords) or any(k in title for k in ["테크노파크", "경제진흥원"]):
+        return 1
+    
+    # 2순위: 창업지원사업 / K-Startup
+    startup_keywords = ["K-Startup", "창업", "스타트업", "청년창업", "초기창업", "예비창업"]
+    if any(k in org for k in startup_keywords) or any(k in title for k in ["창업", "스타트업"]):
+        return 2
+        
+    # 3순위: 기업마당 API
+    if "기업마당" in org:
+        return 3
+        
+    return 4
+
 def send_integrated_kakao_alimtalk(to_phone, user_name, matched_notices, user_region="전국", user_category="소상공인"):
     """🔥 승인 템플릿 본문 100% 일치 매핑 & 카톡 실패 시 LMS 자동 전환(Fallback) 발송"""
     solapi_url = "https://api.solapi.com/messages/v4/send"
@@ -273,19 +299,21 @@ def send_integrated_kakao_alimtalk(to_phone, user_name, matched_notices, user_re
     clean_phone = ''.join(filter(str.isdigit, str(to_phone)))
     total_count = len(matched_notices)
 
-    # 💡 1~3건만 넘버링하여 동적 생성 ('상세링크 참조' 문구 제거)
-    top_notices = matched_notices[:3]
+    # 💡 1. 테크노파크/경제진흥원 -> 2. 창업지원 -> 3. 기업마당 순으로 우선순위 정렬 후 상위 3건 추출
+    sorted_notices = sorted(matched_notices, key=get_notice_priority)
+    top_notices = sorted_notices[:3]
+
     notice_lines = []
     for idx, item in enumerate(top_notices, 1):
+        # 💡 공고명 자르기(말줄임표 ..) 제거하고 원본 전체 제목 노출
         t = f"[{item['org_name']}] {item['title']}"
-        t_short = (t[:36] + '..') if len(t) > 38 else t
         
         # 실제 마감일 날짜가 존재하는 경우에만 (~08.30) 형태로 표시
         d = item.get('deadline')
         if d and d not in ['상세링크 참조', '-', '']:
-            notice_lines.append(f"{idx}. {t_short} (~{d})")
+            notice_lines.append(f"{idx}. {t} (~{d})")
         else:
-            notice_lines.append(f"{idx}. {t_short}")
+            notice_lines.append(f"{idx}. {t}")
 
     notice_list_str = "\n".join(notice_lines)
     more_text_str = f"\n\n외 {total_count - 3}건의 맞춤 공고가 더 등록되었습니다." if total_count > 3 else ""
@@ -666,6 +694,7 @@ def add_notice_to_user_buckets(title, org_name, notice_region, category, target_
                 "org_name": org_name,
                 "link": target_url,
                 "region": notice_region,
+                "category": category,
                 "deadline": "상세링크 참조"
             })
             matched_count += 1
