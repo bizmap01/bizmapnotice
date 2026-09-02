@@ -155,12 +155,12 @@
     .solution-text p { color: #64748b; font-size: 15.5px; line-height: 1.65; }
 
     .pricing-container { display: flex; justify-content: center; align-items: center; }
-    .price-card { background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 44px 32px; width: 360px; max-width: 100%; text-align: center; position: relative; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .price-card { background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 44px 32px; width: 380px; max-width: 100%; text-align: center; position: relative; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
     .price-card.best { border: 2px solid #2563eb; }
     .price-title { font-size: 20px; font-weight: 700; margin-bottom: 18px; }
     .price-amount { font-size: 36px; font-weight: 900; color: #0f172a; margin-bottom: 10px; }
-    .price-amount span { font-size: 16px; font-weight: 500; color: #64748b; }
-    .price-features { list-style: none; margin: 28px 0; text-align: left; font-size: 15px; color: #475569; }
+    .price-amount span { font-size: 15px; font-weight: 600; color: #64748b; }
+    .price-features { list-style: none; margin: 28px 0; text-align: left; font-size: 14.5px; color: #475569; }
     .price-features li { margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
     .btn-subscribe { display: block; width: 100%; background: #2563eb; color: white; padding: 14px; border-radius: 10px; text-decoration: none; font-weight: 700; border: none; cursor: pointer; text-align: center; font-size: 15px; transition: background 0.2s; }
     .btn-subscribe:hover { background: #1d4ed8; }
@@ -345,7 +345,7 @@
       <span class="badge-live">🔴 오늘 신규 수집: 24건 | 모니터링: 41개+</span>
     </div>
     <h1>지원사업 몰라서 놓친 정부지원금,<br>도대체 얼마일까요?</h1>
-    <p>매일 41개 기관을 직접 순회할 시간 없는 대표님을 위해.<br><b>하루 130원(월 3,900원)</b>으로 내 사업에 딱 맞는 지원사업만 카톡으로 받아보세요.</p>
+    <p>매일 41개 기관을 직접 순회할 시간 없는 대표님을 위해.<br><b>하루 130원(월 3,900원, VAT 포함)</b>으로 내 사업에 딱 맞는 지원사업만 카톡으로 받아보세요.</p>
     <button id="hero-start-btn" onclick="openLoginOptionsModal()" class="btn-kakao">🚀 3초 만에 맞춤 알림 신청하기</button>
   </section>
 
@@ -449,9 +449,11 @@
     <div class="pricing-container">
       <div class="price-card best">
         <div class="price-title">월간 정기 구독</div>
-        <div class="price-amount">3,900원 <span>/ 월</span></div>
+        <!-- 💡 VAT 포함 및 이용기간 명시 -->
+        <div class="price-amount">3,900원 <span>/ 월 (VAT 포함)</span></div>
         <ul class="price-features">
           <li>✅ 부담 없는 마이크로 결제</li>
+          <li>✅ <b>서비스 이용기간: 결제일로부터 1개월</b> (매월 자동 갱신)</li>
           <li>✅ 언제든 자유로운 해지 가능</li>
           <li>✅ 전 지역/업종 키워드 맞춤 알림</li>
         </ul>
@@ -747,26 +749,42 @@
           <div id="preview-item-list"></div>
         </div>
 
+        <!-- 💡 VAT 포함 명시 -->
         <button onclick="saveUserInfoAndGoPay()" style="width: 100%; background: #2563eb; color: white; padding: 15px; border: none; border-radius: 12px; font-weight: 800; font-size: 16px; cursor: pointer; box-shadow: 0 4px 12px rgba(37,99,235,0.2);">
-          월 3,900원에 매일 카톡으로 받아보기 ➔
+          월 3,900원(VAT 포함)에 매일 카톡으로 받아보기 ➔
         </button>
       </div>
     </div>
   </div>
 
-  <!-- 2. 구독 결제 모달 -->
+  <!-- 2. 구독 결제 모달 (🔥 VAT포함 / 서비스 이용기간 / 필수 동의 체크박스 완벽 반영) -->
   <div id="payment-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 480px; text-align: center;">
       <button class="modal-close" onclick="closeModal('payment-modal')">✕</button>
       <div class="modal-title" style="border: none; margin-bottom: 8px;">💳 정기구독 결제</div>
-      <p style="font-size: 14px; color: #64748b; margin-bottom: 24px;">대표님이 설정하신 맞춤 알림 조건이 등록되었습니다.<br>아래 버튼을 눌러 결제를 진행해 주세요.</p>
+      <p style="font-size: 14px; color: #64748b; margin-bottom: 20px;">대표님이 설정하신 맞춤 알림 조건이 등록되었습니다.<br>아래 결제 정보를 확인 후 진행해 주세요.</p>
       
-      <div style="background: #f8fafc; border: 2px solid #2563eb; border-radius: 16px; padding: 20px; margin-bottom: 24px; text-align: left;">
+      <!-- 상품 상세 안내 박스 -->
+      <div style="background: #f8fafc; border: 2px solid #2563eb; border-radius: 16px; padding: 20px; margin-bottom: 16px; text-align: left;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-weight: 800; font-size: 17px;">월간 정기 구독</span>
-          <span style="font-size: 20px; font-weight: 900; color: #2563eb;">3,900원 <span style="font-size: 13px; font-weight: 500; color: #64748b;">/ 월</span></span>
+          <span style="font-weight: 800; font-size: 17px; color: #0f172a;">월간 정기 구독</span>
+          <!-- 💡 1. VAT 포함 표기 -->
+          <span style="font-size: 20px; font-weight: 900; color: #2563eb;">3,900원 <span style="font-size: 13px; font-weight: 600; color: #64748b;">/ 월 (VAT 포함)</span></span>
         </div>
-        <p style="font-size: 12px; color: #64748b; margin-top: 6px;">• 부담 없는 월 정기결제, 언제든 자유로운 해지 가능</p>
+        
+        <!-- 💡 2. 비실물 콘텐츠 서비스 이용기간 명시 -->
+        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #cbd5e1; font-size: 12.5px; color: #334155; line-height: 1.6;">
+          <p>• <b>서비스 이용기간:</b> 결제일로부터 1개월 (매월 자동 갱신)</p>
+          <p style="color: #64748b; margin-top: 3px;">• 부담 없는 월 정기결제, 마이페이지에서 언제든 자유로운 해지 가능</p>
+        </div>
+      </div>
+
+      <!-- 💡 3. 정기과금 필수 동의 체크박스 -->
+      <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 12px 14px; margin-bottom: 18px; text-align: left;">
+        <label style="display: flex; align-items: flex-start; gap: 8px; font-size: 13px; font-weight: 700; color: #0f172a; cursor: pointer;">
+          <input type="checkbox" id="agree-recurring-check" checked style="margin-top: 3px; width: 16px; height: 16px; accent-color: #2563eb; cursor: pointer;">
+          <span>[필수] 매월 3,900원(VAT 포함)이 정기적으로 자동 결제되는 것에 동의합니다.</span>
+        </label>
       </div>
 
       <button onclick="executePay('monthly')" style="width: 100%; background: #fee500; color: #000; padding: 15px; border: none; border-radius: 12px; font-weight: 800; font-size: 16px; cursor: pointer;">
@@ -775,7 +793,7 @@
     </div>
   </div>
 
-  <!-- 3. 유저 마이페이지 모달 (전화번호 자동 바인딩 로직 완벽 개선) -->
+  <!-- 3. 유저 마이페이지 모달 -->
   <div id="mypage-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 520px;">
       <button class="modal-close" onclick="closeModal('mypage-modal')">✕</button>
@@ -796,7 +814,7 @@
             <span id="mypage-plan-label" style="font-size: 12px; font-weight: 700; color: #2563eb; background: #eff6ff; padding: 3px 8px; border-radius: 6px;">구독 중</span>
           </div>
           <div id="mypage-sub-desc" style="font-size: 12.5px; color: #475569; line-height: 1.5; margin-bottom: 10px;">
-            매일 아침 맞춤 지원사업 알림이 발송되고 있습니다.
+            매일 아침 맞춤 지원사업 알림이 발송되고 있습니다. (이용기간: 결제일로부터 1개월 자동 갱신)
           </div>
           <div style="display: flex; gap: 8px;">
             <button id="mypage-pay-btn" onclick="closeModal('mypage-modal'); openModal('payment-modal');" style="display: none; width: 100%; background: #2563eb; color: white; border: none; padding: 10px; border-radius: 8px; font-size: 13.5px; font-weight: 800; cursor: pointer;">💳 구독 결제하기</button>
@@ -904,7 +922,7 @@
         ③ 회사는 천재지변, 공공기관 서버 오류, 기타 불가항력적인 사유로 인한 서비스 제공 중단에 대하여 책임을 지지 않습니다.</p>
 
         <h3>제6조 (구독 요금 및 정기결제)</h3>
-        <p>① 서비스 구독 요금은 월간 정기구독(3,900원/월)으로 구성되며, 결제 수단에 따라 정기적으로 자동 갱신 결제됩니다.<br>
+        <p>① 서비스 구독 요금은 월간 정기구독(3,900원/월, VAT 포함)으로 구성되며, 서비스 이용기간은 결제일로부터 1개월 단위로 자동 갱신 결제됩니다.<br>
         ② 이용 요금의 변경 시 회사는 최소 30일 전에 회원에게 개별 고지합니다.</p>
 
         <h3>제7조 (청약철회 및 환불 정책)</h3>
@@ -1254,7 +1272,6 @@
       }
     }
 
-    // 💡 카카오 전화번호 자동 파싱
     function loginWithKakao() {
       currentKakaoUser = null;
       authProviderType = 'kakao';
@@ -1627,9 +1644,17 @@
       openModal('payment-modal');
     }
 
+    /* 🔥 [핵심 수정] 필수 정기결제 동의 체크박스 검증 로직 반영 */
     async function executePay(planType) {
       if (!currentKakaoUser) {
         alert("로그인 정보가 없습니다. 먼저 로그인해 주세요.");
+        return;
+      }
+
+      const agreeCheck = document.getElementById('agree-recurring-check');
+      if (agreeCheck && !agreeCheck.checked) {
+        alert("매월 정기결제 자동 결제 동의에 체크해 주세요.");
+        agreeCheck.focus();
         return;
       }
 
@@ -1679,7 +1704,6 @@
       });
     }
 
-    /* 🔥 [핵심 수정] 마이페이지 열릴 때 카카오 번호 무조건 100% 자동 바인딩 */
     async function openMyPage() {
       if (!currentKakaoUser) {
         openLoginOptionsModal();
@@ -1733,7 +1757,7 @@
           planLabel.style.color = '#15803d';
           planLabel.style.background = '#dcfce7';
         }
-        if (subDesc) subDesc.innerText = '매일 아침 설정하신 키워드 조건으로 맞춤 알림톡이 발송됩니다.';
+        if (subDesc) subDesc.innerText = '매일 아침 설정하신 키워드 조건으로 맞춤 알림톡이 발송됩니다. (이용기간: 결제일로부터 1개월 자동 갱신)';
         if (unpaidNotice) unpaidNotice.style.display = 'none';
       } else {
         if (statusBadge) {
@@ -1756,13 +1780,11 @@
         if (unpaidNotice) unpaidNotice.style.display = 'block';
       }
 
-      // 🔥 [핵심] 카카오 세션에 있는 번호를 기본값으로 우선 설정
       let foundPhone = (currentKakaoUser && currentKakaoUser.phone) ? currentKakaoUser.phone : "";
       let foundRegion = "전국";
       let foundCategory = "소상공인";
       let detailKwList = [];
 
-      // DB에 기존 저장된 키워드가 있으면 DB 값으로 우선 덮어씀
       if (data && data.keywords) {
         const rawKwList = Array.isArray(data.keywords) ? data.keywords : data.keywords.split(',').map(k => k.trim());
 
@@ -1782,7 +1804,6 @@
         });
       }
 
-      // 전화번호 포맷팅 (010-XXXX-XXXX)
       const cleanPhoneDigits = foundPhone.replace(/[^0-9]/g, '');
       let formattedPhone = foundPhone;
       if (cleanPhoneDigits.length === 11) {
@@ -1791,7 +1812,6 @@
         formattedPhone = cleanPhoneDigits.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
       }
 
-      // 상단 박스 번호 표시 & 입력창 자동 채우기 (무조건 실행)
       const phoneDisplay = document.getElementById('mypage-user-phone-display');
       if (phoneDisplay) {
         phoneDisplay.innerText = formattedPhone ? `📱 ${formattedPhone}` : '등록된 번호 없음 (아래에서 입력)';
