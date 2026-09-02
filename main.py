@@ -192,7 +192,15 @@ ALL_KOREA_REGIONS = [
 
 def is_region_matching(user_region, notice_region, title):
     """지자체 및 시·군·구 단위 타 지역 오발송 100% 정밀 차단"""
-    u_reg = user_region.replace("광역시", "").replace("특별자치시", "").replace("특별자치도", "").replace("도", "").replace("시", "").strip()
+    # 💡 '특별시', '특별자치시', '특별자치도'를 '시/도'보다 먼저 제거하여 '서울특별' 같은 왜곡 방지
+    u_reg = (user_region
+             .replace("특별자치시", "")
+             .replace("특별자치도", "")
+             .replace("특별시", "")
+             .replace("광역시", "")
+             .replace("도", "")
+             .replace("시", "")
+             .strip())
     
     # 1. 유저 설정이 '전국'인 경우 통과
     if u_reg in ["전국", ""]:
