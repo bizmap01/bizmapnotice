@@ -161,7 +161,7 @@
     .price-amount { font-size: 36px; font-weight: 900; color: #0f172a; margin-bottom: 10px; }
     .price-amount span { font-size: 15px; font-weight: 600; color: #64748b; }
     .price-features { list-style: none; margin: 28px 0; text-align: left; font-size: 14.5px; color: #475569; }
-    .price-features li { margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .price-features li { margin-bottom: 14px; display: flex; align-items: flex-start; gap: 8px; }
     .btn-subscribe { display: block; width: 100%; background: #2563eb; color: white; padding: 14px; border-radius: 10px; text-decoration: none; font-weight: 700; border: none; cursor: pointer; text-align: center; font-size: 15px; transition: background 0.2s; }
     .btn-subscribe:hover { background: #1d4ed8; }
 
@@ -449,11 +449,16 @@
     <div class="pricing-container">
       <div class="price-card best">
         <div class="price-title">월간 정기 구독</div>
-        <!-- 💡 VAT 포함 및 이용기간 명시 -->
         <div class="price-amount">3,900원 <span>/ 월 (VAT 포함)</span></div>
         <ul class="price-features">
           <li>✅ 부담 없는 마이크로 결제</li>
-          <li>✅ <b>서비스 이용기간: 결제일로부터 1개월</b> (매월 자동 갱신)</li>
+          <li>
+            <span>✅</span>
+            <div>
+              <div>서비스 이용기간 : 결제일로부터 1개월</div>
+              <div style="font-size: 13px; color: #64748b; margin-top: 2px;">(매월 자동 갱신)</div>
+            </div>
+          </li>
           <li>✅ 언제든 자유로운 해지 가능</li>
           <li>✅ 전 지역/업종 키워드 맞춤 알림</li>
         </ul>
@@ -749,7 +754,6 @@
           <div id="preview-item-list"></div>
         </div>
 
-        <!-- 💡 VAT 포함 명시 -->
         <button onclick="saveUserInfoAndGoPay()" style="width: 100%; background: #2563eb; color: white; padding: 15px; border: none; border-radius: 12px; font-weight: 800; font-size: 16px; cursor: pointer; box-shadow: 0 4px 12px rgba(37,99,235,0.2);">
           월 3,900원(VAT 포함)에 매일 카톡으로 받아보기 ➔
         </button>
@@ -757,7 +761,7 @@
     </div>
   </div>
 
-  <!-- 2. 구독 결제 모달 (🔥 VAT포함 / 서비스 이용기간 / 필수 동의 체크박스 완벽 반영) -->
+  <!-- 2. 구독 결제 모달 (하단 취소 및 환불 안내 박스 완벽 내장) -->
   <div id="payment-modal" class="modal-overlay">
     <div class="modal-content" style="max-width: 480px; text-align: center;">
       <button class="modal-close" onclick="closeModal('payment-modal')">✕</button>
@@ -768,28 +772,33 @@
       <div style="background: #f8fafc; border: 2px solid #2563eb; border-radius: 16px; padding: 20px; margin-bottom: 16px; text-align: left;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <span style="font-weight: 800; font-size: 17px; color: #0f172a;">월간 정기 구독</span>
-          <!-- 💡 1. VAT 포함 표기 -->
           <span style="font-size: 20px; font-weight: 900; color: #2563eb;">3,900원 <span style="font-size: 13px; font-weight: 600; color: #64748b;">/ 월 (VAT 포함)</span></span>
         </div>
         
-        <!-- 💡 2. 비실물 콘텐츠 서비스 이용기간 명시 -->
         <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #cbd5e1; font-size: 12.5px; color: #334155; line-height: 1.6;">
           <p>• <b>서비스 이용기간:</b> 결제일로부터 1개월 (매월 자동 갱신)</p>
           <p style="color: #64748b; margin-top: 3px;">• 부담 없는 월 정기결제, 마이페이지에서 언제든 자유로운 해지 가능</p>
         </div>
       </div>
 
-      <!-- 💡 3. 정기과금 필수 동의 체크박스 -->
-      <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 12px 14px; margin-bottom: 18px; text-align: left;">
+      <!-- 정기과금 필수 동의 체크박스 -->
+      <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; text-align: left;">
         <label style="display: flex; align-items: flex-start; gap: 8px; font-size: 13px; font-weight: 700; color: #0f172a; cursor: pointer;">
           <input type="checkbox" id="agree-recurring-check" checked style="margin-top: 3px; width: 16px; height: 16px; accent-color: #2563eb; cursor: pointer;">
           <span>[필수] 매월 3,900원(VAT 포함)이 정기적으로 자동 결제되는 것에 동의합니다.</span>
         </label>
       </div>
 
-      <button onclick="executePay('monthly')" style="width: 100%; background: #fee500; color: #000; padding: 15px; border: none; border-radius: 12px; font-weight: 800; font-size: 16px; cursor: pointer;">
+      <button onclick="executePay('monthly')" style="width: 100%; background: #fee500; color: #000; padding: 15px; border: none; border-radius: 12px; font-weight: 800; font-size: 16px; cursor: pointer; margin-bottom: 16px;">
         💬 카카오페이 / 카드로 결제하고 시작
       </button>
+
+      <!-- 💡 결제 모달 하단 환불/취소 고지 박스 -->
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; text-align: left; font-size: 11.5px; color: #64748b; line-height: 1.6;">
+        <p style="font-weight: 800; color: #334155; margin-bottom: 4px;">[취소 및 환불 안내]</p>
+        <p>• 결제 후 7일 이내 알림 수신/이용 이력이 없는 경우 100% 전액 취소 가능합니다.</p>
+        <p>• 서비스 이용 이력이 있는 경우 당월 결제액은 환불되지 않으며, 마이페이지에서 해지 시 익월부터 자동 결제되지 않습니다.</p>
+      </div>
     </div>
   </div>
 
@@ -894,7 +903,7 @@
     </div>
   </div>
 
-  <!-- 4. 이용약관 전문 모달 -->
+  <!-- 4. 이용약관 전문 모달 (🔥 제7조 청약철회 및 환불 규정 수정완료) -->
   <div id="terms-modal" class="modal-overlay">
     <div class="modal-content">
       <button class="modal-close" onclick="closeModal('terms-modal')">✕</button>
@@ -926,8 +935,8 @@
         ② 이용 요금의 변경 시 회사는 최소 30일 전에 회원에게 개별 고지합니다.</p>
 
         <h3>제7조 (청약철회 및 환불 정책)</h3>
-        <p>① 회원은 정기결제 후 서비스 이용 내역이 없거나 결제일로부터 24시간 이내에 환불을 요청할 경우 100% 전액 환불을 받을 수 있습니다.<br>
-        ② 이용 중 중도 해지 시에는 환불 신청일을 기준으로 이미 제공된 서비스 이용 기간에 해당하는 이용금액을 일할 계산하여 차감한 후 잔여 금액을 환불합니다.<br>
+        <p>① 회원은 정기구독 결제 후 7일 이내에 알림 서비스 이용 이력이 없는 경우 위약금 없이 100% 결제 취소 및 청약철회를 받을 수 있습니다.<br>
+        ② 결제 후 7일이 경과하였거나 알림톡 수신 등 서비스 이용 이력이 있는 경우, 당월 결제 금액은 환불되지 않으며 다음 결제 주기부터 자동 결제 해지(구독 취소)로 처리됩니다.<br>
         ③ 회사의 명백한 귀책사유로 인하여 알림 서비스가 지속적으로 누락된 경우 전액 환불 처리됩니다.</p>
 
         <h3>제8조 (서비스 이용 해지 및 회원 탈퇴)</h3>
@@ -1644,7 +1653,6 @@
       openModal('payment-modal');
     }
 
-    /* 🔥 [핵심 수정] 필수 정기결제 동의 체크박스 검증 로직 반영 */
     async function executePay(planType) {
       if (!currentKakaoUser) {
         alert("로그인 정보가 없습니다. 먼저 로그인해 주세요.");
