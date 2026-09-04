@@ -197,12 +197,10 @@
     .modal-title { font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; }
     .modal-close { position: absolute; top: 24px; right: 24px; font-size: 22px; cursor: pointer; border: none; background: #f1f5f9; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #64748b; }
     
-    /* 📖 약관 및 정책 가독성 완벽 정돈 (내어쓰기 및 가독성 전용) */
     .modal-body { font-size: 14px; color: #334155; line-height: 1.75; }
     .modal-body h3 { font-size: 15.5px; font-weight: 800; margin: 26px 0 12px; color: #0f172a; border-left: 4px solid #2563eb; padding-left: 10px; }
     .modal-body p { margin-bottom: 10px; color: #334155; }
     
-    /* 🔥 [핵심] ①, ② 항 번호 들여쓰기/내어쓰기(Hanging Indent) 레이아웃 */
     .modal-body p.clause-item { 
       margin-bottom: 8px; 
       padding-left: 22px; 
@@ -918,7 +916,7 @@
     </div>
   </div>
 
-  <!-- 4. 이용약관 전문 모달 (✨ 내어쓰기 및 가독성 레이아웃 완벽 정돈) -->
+  <!-- 4. 이용약관 전문 모달 -->
   <div id="terms-modal" class="modal-overlay">
     <div class="modal-content">
       <button class="modal-close" onclick="closeModal('terms-modal')">✕</button>
@@ -1039,7 +1037,8 @@
     const KAKAO_JS_KEY = '9bd12d1c0e5ec843cafec8513fc92cc8';
 
     const PORTONE_STORE_ID = "imp16466056"; 
-    const PORTONE_CHANNEL_KEY = "channel-key-7440cf74-3778-422b-ba68-1ab66753683a"; 
+    /* 🔥 [실연동 적용] 발급된 KG이니시스 실 채널 키 */
+    const PORTONE_CHANNEL_KEY = "channel-key-9a8f8034-db98-45f1-8755-842ff6b50534"; 
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: {
@@ -1676,6 +1675,7 @@
       openModal('payment-modal');
     }
 
+    /* 🔥 [핵심 수정] 실연동 전용 포트원 결제 및 익월 자동출금 빌링 DB 연동 로직 */
     async function executePay(planType) {
       if (!currentKakaoUser) {
         alert("로그인 정보가 없습니다. 먼저 로그인해 주세요.");
@@ -1694,13 +1694,16 @@
       const userEmail = currentKakaoUser.kakao_account?.email || `user_${currentKakaoUser.id}@bizmap.local`;
       const userName = currentKakaoUser.properties?.nickname || '구독자';
 
+      // 💡 유저별 고유 카드 토큰 식별자 (정기결제 빌링키 ID)
+      const customerUid = `customer_${userEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
       if (!window.IMP) {
         alert("결제 모듈이 아직 로드되지 않았습니다. 잠시 후 다시 시도해 주세요.");
         return;
       }
 
+      // 💡 실 채널 연동: 테스트 pg 파라미터를 완전히 제거하고 PORTONE_CHANNEL_KEY로 직결
       IMP.request_pay({
-        pg: "html5_inicis.INIBillTst",
         channelKey: PORTONE_CHANNEL_KEY,
         pay_method: "card",
         merchant_uid: `bizmap_${planType}_${Date.now()}`,
@@ -1708,14 +1711,23 @@
         amount: price,
         buyer_email: userEmail,
         buyer_name: userName,
-        customer_uid: `customer_${userEmail.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`
+        customer_uid: customerUid
       }, async function (rsp) {
         if (rsp.success) {
           try {
+            // 다음 달 자동 결제 예정일 계산 (결제일로부터 1개월 뒤)
+            const nextBillingDate = new Date();
+            nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+
+            // 💡 Supabase DB에 유료 활성, 빌링키, 거래번호, 다음 결제 예정일 완벽 저장
             const { error } = await supabaseClient
               .from('users')
               .update({ 
                 subscription_status: 'active',
+                customer_uid: customerUid,
+                last_imp_uid: rsp.imp_uid,
+                last_merchant_uid: rsp.merchant_uid,
+                next_billing_date: nextBillingDate.toISOString(),
                 updated_at: new Date().toISOString()
               })
               .eq('email', userEmail);
@@ -1725,9 +1737,10 @@
             alert(`🎉 ${planName} 결제가 정상 완료되었습니다!\n매일 아침 맞춤 지원사업 알림톡이 시작됩니다.`);
             closeModal('payment-modal');
             updateUIOnLogin();
+            openMyPage();
           } catch (err) {
             console.error("DB 업데이트 에러:", err);
-            alert("결제는 성공했으나 회원 상태 변경 중 오류가 발생했습니다. 고객센터로 문의해주세요.");
+            alert("결제는 승인되었으나 회원 상태 변경 중 오류가 발생했습니다. 고객센터로 문의해주세요.");
           }
         } else {
           alert(`결제에 실패하였습니다: ${rsp.error_msg}`);
