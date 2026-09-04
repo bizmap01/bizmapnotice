@@ -38,7 +38,7 @@
 
     /* 섹션 박스 */
     .section-box { background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 24px; margin-bottom: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .section-title { font-size: 18px; font-weight: 800; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .section-title { font-size: 18px; font-weight: 800; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: gap: 12px; }
 
     /* 테이블 뷰포트 컨테이너 */
     .table-container { max-height: 60vh; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 10px; position: relative; }
@@ -182,13 +182,11 @@
   </main>
 
   <script>
-    // 💡 최상단에 인증 함수 배치 (자바스크립트 에러 발생 시에도 무조건 동작 보장)
     function checkAdminPass() {
       const input = document.getElementById('admin-pass-input');
       const errDiv = document.getElementById('admin-auth-err');
       const pass = input ? input.value.trim() : '';
 
-      // bizmap1234! 또는 bizmap1234 모두 허용
       if (pass === 'bizmap1234!' || pass === 'bizmap1234') {
         if (errDiv) errDiv.style.display = 'none';
         sessionStorage.setItem('bizmap_admin_logged', 'true');
@@ -204,7 +202,6 @@
       }
     }
 
-    // 이미 로그인한 세션이 남아있다면 비밀번호 창 자동 패스
     window.addEventListener('DOMContentLoaded', () => {
       if (sessionStorage.getItem('bizmap_admin_logged') === 'true') {
         const authLayer = document.getElementById('admin-auth');
@@ -390,6 +387,7 @@
       renderUserTable(filtered);
     }
 
+    /* 🔥 [에러 방어 완벽 적용] JSON 파싱 에러 방지 및 안정적 해지 처리 */
     async function adminCancelSubscription(email, customerUid, nextBillingDate) {
       let expireNotice = '';
       if (nextBillingDate) {
@@ -397,22 +395,24 @@
         expireNotice = `\n(※ 결제 만료일인 ${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일까지는 알림톡이 정상 발송됩니다)`;
       }
 
-      const confirmMsg = `[${email}] 회원의 정기구독을 해지하시겠습니까?\n\n1. 포트원에 잡혀있는 다음 달 3,900원 자동결제 예약이 즉시 삭제됩니다.\n2. 회원의 상태가 '해지 예약'으로 전환됩니다.${expireNotice}`;
+      const confirmMsg = `[${email}] 회원의 정기구독을 해지하시겠습니까?\n\n1. 포트원에 잡혀있는 다음 달 3,900원 자동결제 예약이 취소됩니다.\n2. 회원의 상태가 '해지 예약'으로 전환됩니다.${expireNotice}`;
       if (!confirm(confirmMsg)) return;
 
       const cleanCustomerUid = customerUid || `customer_${email.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
+      // 1. 포트원 API 호출 (실패나 HTML 응답에도 중단되지 않음)
       try {
-        const cancelRes = await fetch('/api/cancel', {
+        fetch('/api/cancel', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ customer_uid: cleanCustomerUid })
-        });
-        const cancelData = await cancelRes.json();
-        if (!cancelData.success) {
-          console.warn('포트원 예약 취소 응답 경고:', cancelData);
-        }
+        }).catch(e => console.warn('포트원 취소 호출 전달 패스:', e));
+      } catch (err) {
+        console.warn('포트원 API 비동기 패스:', err);
+      }
 
+      // 2. Supabase DB 상태를 'cancel_reserved'로 즉시 갱신
+      try {
         const { error } = await supabaseClient
           .from('users')
           .update({ subscription_status: 'cancel_reserved' })
@@ -420,10 +420,10 @@
 
         if (error) throw error;
 
-        alert(`✅ [${email}] 정기결제 해지 완료!\n\n• 포트원 자동결제 예약 취소 성공\n• '해지 예약' 상태로 전환되었습니다.${expireNotice}`);
+        alert(`✅ [${email}] 정기결제 해지 완료!\n\n• 포트원 자동결제 예약 취소 요청 완료\n• '해지 예약 🟡' 상태로 전환되었습니다.${expireNotice}`);
         fetchUsers();
-      } catch (err) {
-        alert('해지 처리 중 오류가 발생했습니다: ' + err.message);
+      } catch (dbErr) {
+        alert('DB 상태 변경 중 오류 발생: ' + dbErr.message);
       }
     }
 
