@@ -1,3 +1,4 @@
+// api/charge.js
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
@@ -27,7 +28,7 @@ export default async function handler(req, res) {
 
     const accessToken = tokenData.response.access_token;
 
-    // 2. 등록된 카드(customer_uid)로 3,900원 출금 승인 요청
+    // 2. 등록된 카드(customer_uid)로 첫 달 3,900원 출금 승인 요청
     const payRes = await fetch('https://api.iamport.kr/subscribe/payments/again', {
       method: 'POST',
       headers: {
@@ -47,11 +48,39 @@ export default async function handler(req, res) {
     const payData = await payRes.json();
 
     if (payData.code === 0 && payData.response.status === 'paid') {
+      // 3. 🔥 [자동 결제 세팅] 1달 뒤 자동 결제 스케줄을 포트원에 즉시 예약 등록
+      const nextDate = new Date();
+      nextDate.setMonth(nextDate.getMonth() + 1); // 정확히 1달 뒤
+      const scheduleAt = Math.floor(nextDate.getTime() / 1000); // 초 단위 Unix Timestamp
+      const nextMerchantUid = `bizmap_auto_${Date.now()}`;
+
+      await fetch('https://api.iamport.kr/subscribe/payments/schedule', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          customer_uid: customer_uid,
+          schedules: [
+            {
+              merchant_uid: nextMerchantUid,
+              schedule_at: scheduleAt,
+              amount: amount || 3900,
+              name: name || '비즈맵 지원사업 알림 (월간 정기구독)',
+              buyer_email: buyer_email,
+              buyer_name: buyer_name
+            }
+          ]
+        })
+      });
+
       return res.status(200).json({
         success: true,
         imp_uid: payData.response.imp_uid,
         merchant_uid: payData.response.merchant_uid,
-        paid_amount: payData.response.amount
+        paid_amount: payData.response.amount,
+        next_billing_date: nextDate.toISOString()
       });
     } else {
       return res.status(400).json({
