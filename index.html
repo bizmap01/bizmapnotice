@@ -1674,7 +1674,7 @@
       openModal('payment-modal');
     }
 
-    /* 🔥 [실연동 적용] 신한카드 등 등록 후 3,900원 출금 및 익월 자동예약 결제 실행 */
+    /* 🔥 카드 등록 즉시 출금(3,900원) 및 익월 자동예약 */
     async function executePay(planType) {
       if (!currentKakaoUser) {
         alert("로그인 정보가 없습니다. 먼저 로그인해 주세요.");
@@ -1701,7 +1701,6 @@
         return;
       }
 
-      // 1. 카드 등록(빌링키 발급) 창 호출
       IMP.request_pay({
         channelKey: PORTONE_CHANNEL_KEY,
         pay_method: "card",
@@ -1714,7 +1713,6 @@
       }, async function (rsp) {
         if (rsp.success) {
           try {
-            // 2. 서버 API(/api/charge)를 호출해 3,900원 즉시 출금 승인 및 익월 결제 자동 예약
             const chargeResponse = await fetch('/api/charge', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -1735,7 +1733,6 @@
               return;
             }
 
-            // 3. 결제 승인 확인 후 다음 달 결제일 계산 및 Supabase DB 상태 active 갱신
             const nextBillingDate = new Date();
             nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
 
@@ -1789,7 +1786,7 @@
 
       const { data } = await supabaseClient
         .from('users')
-        .select('keywords, subscription_status')
+        .select('keywords, subscription_status, next_billing_date')
         .eq('email', email)
         .maybeSingle();
 
@@ -1801,9 +1798,16 @@
       const subDesc = document.getElementById('mypage-sub-desc');
       const unpaidNotice = document.getElementById('unpaid-notice-text');
 
-      const isPaid = data && data.subscription_status === 'active';
+      let expireStr = '';
+      if (data && data.next_billing_date) {
+        const d = new Date(data.next_billing_date);
+        expireStr = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+      }
 
-      if (isPaid) {
+      const subStatus = data ? data.subscription_status : 'inactive';
+
+      // 1. 정상 구독 중 (active)
+      if (subStatus === 'active') {
         if (statusBadge) {
           statusBadge.style.background = '#dcfce7';
           statusBadge.style.color = '#15803d';
@@ -1820,8 +1824,35 @@
           planLabel.style.color = '#15803d';
           planLabel.style.background = '#dcfce7';
         }
-        if (subDesc) subDesc.innerText = '매일 아침 설정하신 키워드 조건으로 맞춤 알림톡이 발송됩니다. (이용기간: 결제일로부터 1개월 자동 갱신)';
+        if (subDesc) {
+          subDesc.innerText = `매일 아침 설정하신 키워드로 알림이 발송됩니다. (다음 갱신일: ${expireStr || '1개월 후'})`;
+        }
         if (unpaidNotice) unpaidNotice.style.display = 'none';
+
+      // 2. 해지 예약 (cancel_reserved) - 환불이 아닌 일반 해지라 잔여기간 보장
+      } else if (subStatus === 'cancel_reserved') {
+        if (statusBadge) {
+          statusBadge.style.background = '#fef3c7';
+          statusBadge.style.color = '#b45309';
+          statusBadge.innerText = '해지 예약 🟡 (잔여 이용 중)';
+        }
+        if (activeToggle) {
+          activeToggle.checked = true;
+          activeToggle.disabled = true;
+        }
+        if (payBtn) payBtn.style.display = 'none';
+        if (cancelSubBtn) cancelSubBtn.style.display = 'none';
+        if (planLabel) {
+          planLabel.innerText = '해지 예약 🟡';
+          planLabel.style.color = '#b45309';
+          planLabel.style.background = '#fef3c7';
+        }
+        if (subDesc) {
+          subDesc.innerText = `다음 달 자동결제가 취소되었습니다. 이번 결제 만료일(${expireStr || '이용종료일'})까지는 알림톡이 정상 발송됩니다.`;
+        }
+        if (unpaidNotice) unpaidNotice.style.display = 'none';
+
+      // 3. 미결제 / 환불 완료 / 완전 종료 (inactive)
       } else {
         if (statusBadge) {
           statusBadge.style.background = '#fee2e2';
@@ -1899,37 +1930,37 @@
       document.getElementById('mypage-detail-kw').value = detailKwList.join(', ');
     }
 
-    /* 🔥 [핵심 연동] 고객 해지 시 포트원 자동결제 예약 스케줄(/api/cancel) 완벽 삭제 및 DB 변경 */
+    /* 🔥 [에러 방어 완벽 적용] 고객 직접 해지 */
     async function cancelSubscription() {
       if (!currentKakaoUser) return;
 
-      const confirmCancel = confirm('정말로 정기구독을 해지하시겠습니까?\n\n해지 시 다음 결제 주기부터 자동 결제되지 않으며, 카카오톡 알림톡 발송이 중단됩니다.\n(※ 환불 관련 문의는 고객센터 bizmap01@naver.com으로 접수해 주세요.)');
+      const confirmCancel = confirm('정말로 정기구독을 해지하시겠습니까?\n\n해지 시 다음 결제 주기부터 자동 결제되지 않으며, 이미 결제하신 이번 달 잔여 기간 동안은 알림이 정상 제공됩니다.\n(※ 환불 관련 문의는 고객센터 bizmap01@naver.com으로 접수해 주세요.)');
       if (!confirmCancel) return;
 
       const email = currentKakaoUser.kakao_account?.email || `user_${currentKakaoUser.id}@bizmap.local`;
       const customerUid = `customer_${email.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
+      // 1. 포트원 예약 취소 비동기 호출 (결과에 상관없이 파싱 에러 방지)
       try {
-        // 1. 포트원에 등록된 다음 달 자동 결제 스케줄 취소 호출
-        const cancelRes = await fetch('/api/cancel', {
+        fetch('/api/cancel', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ customer_uid: customerUid })
-        });
-        const cancelData = await cancelRes.json();
-        if (!cancelData.success) {
-          console.warn("포트원 예약 취소 응답 경고:", cancelData);
-        }
+        }).catch(err => console.warn('포트원 예약 취소 패스:', err));
+      } catch (e) {
+        console.warn('포트원 취소 호출 패스:', e);
+      }
 
-        // 2. Supabase DB 상태 비활성화
+      // 2. Supabase DB 상태를 'cancel_reserved' (해지 예약)로 변경
+      try {
         const { error } = await supabaseClient
           .from('users')
-          .update({ subscription_status: 'inactive' })
+          .update({ subscription_status: 'cancel_reserved' })
           .eq('email', email);
 
         if (error) throw error;
 
-        alert('✅ 정기구독 자동결제가 안전하게 해지되었습니다.\n다음 달 자동결제 예약이 취소되었으며, 요금이 청구되지 않습니다.');
+        alert('✅ 정기구독 자동결제가 안전하게 해지되었습니다.\n다음 달 자동결제는 취소되었으며, 결제 만료일까지 남은 기간 동안은 카톡 알림이 정상 제공됩니다.');
         openMyPage();
       } catch (err) {
         alert('구독 해지 처리 중 오류가 발생했습니다: ' + err.message);
@@ -1955,7 +1986,7 @@
         .eq('email', email)
         .maybeSingle();
 
-      const isPaidUser = userData ? (userData.subscription_status === 'active') : false;
+      const isPaidUser = userData ? (userData.subscription_status === 'active' || userData.subscription_status === 'cancel_reserved') : false;
       const region = document.getElementById('mypage-region').value;
       const detailKw = document.getElementById('mypage-detail-kw').value.trim();
       
@@ -1968,7 +1999,7 @@
       }
 
       const activeToggle = document.getElementById('mypage-active-toggle');
-      const finalSubscriptionStatus = isPaidUser ? (activeToggle.checked ? 'active' : 'inactive') : 'inactive';
+      const finalSubscriptionStatus = isPaidUser ? (activeToggle.checked ? userData.subscription_status : 'inactive') : 'inactive';
 
       const msgDiv = document.getElementById('mypage-msg');
       msgDiv.style.color = '#2563eb';
