@@ -1109,6 +1109,27 @@
       });
     }
 
+    // 🔥 [페이지 접속 시 자동 세션 복원]
+    window.addEventListener('DOMContentLoaded', async () => {
+      const savedSession = localStorage.getItem('bizmap_user_session');
+      if (savedSession) {
+        try {
+          const parsed = JSON.parse(savedSession);
+          if (parsed && parsed.user) {
+            currentKakaoUser = parsed.user;
+            authProviderType = parsed.provider || 'kakao';
+            updateUIOnLogin();
+
+            if (window.location.search.includes('today=true')) {
+              openTodayNoticesModal();
+            }
+          }
+        } catch (e) {
+          localStorage.removeItem('bizmap_user_session');
+        }
+      }
+    });
+
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
       if (session && session.user) {
         const user = session.user;
@@ -1118,6 +1139,11 @@
           properties: { nickname: user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0] }
         };
         authProviderType = 'google';
+
+        localStorage.setItem('bizmap_user_session', JSON.stringify({
+          user: currentKakaoUser,
+          provider: 'google'
+        }));
 
         updateUIOnLogin();
 
@@ -1284,7 +1310,9 @@
       }
     }
 
+    // 🔥 로그아웃 시 영구 세션 삭제
     async function logoutWithKakao() {
+      localStorage.removeItem('bizmap_user_session');
       await supabaseClient.auth.signOut();
       currentKakaoUser = null;
       authProviderType = 'kakao';
@@ -1304,6 +1332,7 @@
       }
     }
 
+    // 🔥 카카오 로그인 시 영구 세션 저장
     function loginWithKakao() {
       currentKakaoUser = null;
       authProviderType = 'kakao';
@@ -1327,6 +1356,12 @@
                 },
                 phone: extractedPhone
               };
+
+              // 브라우저 영구 세션 저장
+              localStorage.setItem('bizmap_user_session', JSON.stringify({
+                user: currentKakaoUser,
+                provider: 'kakao'
+              }));
 
               closeModal('login-choice-modal');
               updateUIOnLogin();
@@ -1416,11 +1451,18 @@
         phone: phone
       };
       currentKakaoUser = dummyEmailUser;
+
+      localStorage.setItem('bizmap_user_session', JSON.stringify({
+        user: currentKakaoUser,
+        provider: 'email'
+      }));
+
       closeModal('login-choice-modal');
       updateUIOnLogin();
       checkUserOnboard(dummyEmailUser);
     }
 
+    // 🔥 이메일 로그인 시 영구 세션 저장
     async function loginWithEmailLogin() {
       const email = id('login-email-val').value.trim();
       const password = id('login-pass-val').value.trim();
@@ -1452,6 +1494,11 @@
         properties: { nickname: user.name || user.email.split('@')[0] }
       };
       authProviderType = 'email';
+
+      localStorage.setItem('bizmap_user_session', JSON.stringify({
+        user: currentKakaoUser,
+        provider: 'email'
+      }));
 
       closeModal('login-choice-modal');
       updateUIOnLogin();
@@ -1942,7 +1989,7 @@
       const email = currentKakaoUser.kakao_account?.email || `user_${currentKakaoUser.id}@bizmap.local`;
       const customerUid = `customer_${email.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
-      // 1. 포트원 예약 취소 비동기 호출 (결과에 상관없이 파싱 에러 방지)
+      // 1. 포트원 예약 취소 비동기 호출 (파싱 에러 차단)
       try {
         fetch('/api/cancel', {
           method: 'POST',
@@ -2045,6 +2092,7 @@
       }
 
       resetAllForms();
+      localStorage.removeItem('bizmap_user_session');
 
       if (authProviderType === 'kakao' && window.Kakao && Kakao.Auth && Kakao.Auth.getAccessToken()) {
         Kakao.API.request({
