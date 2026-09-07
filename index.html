@@ -1109,7 +1109,7 @@
       });
     }
 
-    // 🔥 [페이지 접속 시 자동 세션 복원]
+    // 🔥 [1. 새로고침 및 첫 접속 시 로컬 영구 세션 즉시 복원]
     window.addEventListener('DOMContentLoaded', async () => {
       const savedSession = localStorage.getItem('bizmap_user_session');
       if (savedSession) {
@@ -1130,6 +1130,7 @@
       }
     });
 
+    // 🔥 [2. Supabase Auth 리스너 충돌 방지: 로컬 세션 존재 시 강제 로그아웃 차단]
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
       if (session && session.user) {
         const user = session.user;
@@ -1154,7 +1155,10 @@
           await checkUserOnboard(currentKakaoUser);
         }
       } else if (event === 'SIGNED_OUT') {
-        updateUIOnLogout();
+        const localSaved = localStorage.getItem('bizmap_user_session');
+        if (!localSaved) {
+          updateUIOnLogout();
+        }
       }
     });
 
@@ -1310,7 +1314,7 @@
       }
     }
 
-    // 🔥 로그아웃 시 영구 세션 삭제
+    // 🔥 로그아웃 버튼을 직접 눌렀을 때만 로컬 세션 완전 삭제
     async function logoutWithKakao() {
       localStorage.removeItem('bizmap_user_session');
       await supabaseClient.auth.signOut();
@@ -1332,7 +1336,7 @@
       }
     }
 
-    // 🔥 카카오 로그인 시 영구 세션 저장
+    // 🔥 카카오 로그인 시 영구 세션 보관
     function loginWithKakao() {
       currentKakaoUser = null;
       authProviderType = 'kakao';
@@ -1357,7 +1361,6 @@
                 phone: extractedPhone
               };
 
-              // 브라우저 영구 세션 저장
               localStorage.setItem('bizmap_user_session', JSON.stringify({
                 user: currentKakaoUser,
                 provider: 'kakao'
@@ -1462,7 +1465,7 @@
       checkUserOnboard(dummyEmailUser);
     }
 
-    // 🔥 이메일 로그인 시 영구 세션 저장
+    // 🔥 일반 이메일 로그인 시 영구 세션 보관
     async function loginWithEmailLogin() {
       const email = id('login-email-val').value.trim();
       const password = id('login-pass-val').value.trim();
@@ -1989,7 +1992,6 @@
       const email = currentKakaoUser.kakao_account?.email || `user_${currentKakaoUser.id}@bizmap.local`;
       const customerUid = `customer_${email.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
-      // 1. 포트원 예약 취소 비동기 호출 (파싱 에러 차단)
       try {
         fetch('/api/cancel', {
           method: 'POST',
@@ -2000,7 +2002,6 @@
         console.warn('포트원 취소 호출 패스:', e);
       }
 
-      // 2. Supabase DB 상태를 'cancel_reserved' (해지 예약)로 변경
       try {
         const { error } = await supabaseClient
           .from('users')
