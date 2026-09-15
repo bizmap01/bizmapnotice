@@ -174,10 +174,8 @@ def send_dev_warning(org_name, category, target_url, dev_history):
 # 3. 💬 정밀 지역/업종 필터 및 알림톡 발송 엔진
 # ==========================================
 
-# 🌐 전국 모든 광역시/도 및 226개 시·군·구 정밀 차단 사전
 ALL_KOREA_REGIONS = [
     "서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
-    # 시 / 군 단위 (영월, 완도, 정읍, 진안 등 오발송 원천 차단)
     "영월", "정선", "평창", "화천", "양구", "인제", "고성", "양양", "철원", "홍천", "횡성", "원주", "춘천", "강릉", "동해", "삼척", "속초", "태백",
     "단양", "제천", "보은", "옥천", "영동", "증평", "진천", "괴산", "음성", "청주", "충주",
     "태안", "당진", "서산", "홍성", "보령", "청양", "부여", "서천", "논산", "계룡", "금산", "예산", "아산", "천안", "공주",
@@ -191,8 +189,6 @@ ALL_KOREA_REGIONS = [
 ]
 
 def is_region_matching(user_region, notice_region, title):
-    """지자체 및 시·군·구 단위 타 지역 오발송 100% 정밀 차단"""
-    # 💡 '특별시', '특별자치시', '특별자치도'를 '시/도'보다 먼저 제거하여 '서울특별' 같은 왜곡 방지
     u_reg = (user_region
              .replace("특별자치시", "")
              .replace("특별자치도", "")
@@ -202,18 +198,14 @@ def is_region_matching(user_region, notice_region, title):
              .replace("시", "")
              .strip())
     
-    # 1. 유저 설정이 '전국'인 경우 통과
     if u_reg in ["전국", ""]:
         return True
         
-    # 2. 내 지역명이 기관 지역 또는 제목에 명시된 경우 통과
     if u_reg in notice_region or u_reg in title:
         return True
         
-    # 3. 공고 지역이 '전국'인 경우 -> 제목에 다른 시/도/군/구 이름이 적혀있으면 타 지역 공고이므로 차단
     if notice_region == "전국":
         for reg in ALL_KOREA_REGIONS:
-            # 제목에 타 지역명이 있고, 내 지역명이 제목에 없으면 탈락
             if reg in title and u_reg not in title and u_reg not in reg and reg not in u_reg:
                 return False
         return True
@@ -221,10 +213,8 @@ def is_region_matching(user_region, notice_region, title):
     return False
 
 def is_category_matching(user_category, title, notice_category="", notice_region=""):
-    """🔥 범용 상용어('신규', '육성') 제거 및 진짜 업종 정밀 매칭"""
     clean_cat = (user_category or "소상공인").strip()
     
-    # 1. 극소수 특수 산업군 무조건 제외 (전력, 원전, CBAM, 제약, 축산, 시멘트 등)
     niche_excludes = [
         "전력산업", "CBAM", "탄소국경", "제약기업", "온디바이스", "원전", "낙농", "축산", "어업",
         "방폭", "시멘트", "콘크리트", "선박제조", "중장비", "플랜트", "반도체 후공정", "서점"
@@ -232,7 +222,6 @@ def is_category_matching(user_category, title, notice_category="", notice_region
     if any(bad in title for bad in niche_excludes):
         return False
 
-    # 2. '창업' / '스타트업' 유저 필터 (⚠️ '신규', '육성', '도전' 같은 흔한 공고문 단어 완전 배제)
     if clean_cat in ["창업", "스타트업", "예비창업", "초기창업"]:
         startup_keywords = [
             "창업", "스타트업", "예비창업", "초기창업", "청년창업", "IR", "입주", "보육", 
@@ -241,31 +230,25 @@ def is_category_matching(user_category, title, notice_category="", notice_region
         ]
         if any(k in title or k in notice_category for k in startup_keywords):
             return True
-        # 내 지자체(부산 등) 공고 중 일반 사업화는 수용
         if notice_region not in ["전국", ""] and any(k in title for k in ["사업화", "마케팅", "지원사업"]):
             return True
         return False
 
-    # 3. '소상공인' / '자영업' 유저 필터
     if clean_cat in ["소상공인", "자영업", "골목상권"]:
-        # 대형 연구개발(R&D), 특허, 기술인프라 과제 엄격 배제
         rnd_excludes = ["R&D", "연구개발", "기술개발", "특허출원", "성능평가", "인프라구축", "선도연구", "과제 기획"]
         if any(bad in title for bad in rnd_excludes):
             return False
             
-        # 소상공인 핵심 지원사업 매칭
         sosang_keywords = [
             "소상공인", "자영업", "골목", "상점", "전통시장", "점포", "착한가격", "온라인 판로",
             "경영환경", "마케팅", "바우처", "이차보전", "특례보증", "시설개선", "임차료", "수수료"
         ]
         if any(k in title or k in notice_category for k in sosang_keywords):
             return True
-        # 지자체 일반 경영/자금 지원 수용
         if notice_region not in ["전국", ""] and any(k in title for k in ["경영", "자금", "지원사업"]):
             return True
         return False
 
-    # 4. 기타 특정 업종 (제조, IT 등)
     if clean_cat in title or clean_cat in notice_category:
         return True
     if notice_region not in ["전국", ""]:
@@ -274,49 +257,35 @@ def is_category_matching(user_category, title, notice_category="", notice_region
     return False
 
 def get_notice_priority(item):
-    """
-    📌 상위 공고 요약용 우선순위 산출 함수
-    1순위: 지역 테크노파크(TP) 및 경제진흥원
-    2순위: 창업지원사업 및 K-Startup
-    3순위: 기업마당 API 및 기타 공고
-    """
     org = item.get('org_name', '')
     title = item.get('title', '')
     
-    # 1순위: 지역 테크노파크 및 경제진흥원
     tp_keywords = ["테크노파크", "경제진흥원", "TP", "경제통상진흥원", "창조경제혁신센터"]
     if any(k in org for k in tp_keywords) or any(k in title for k in ["테크노파크", "경제진흥원"]):
         return 1
     
-    # 2순위: 창업지원사업 / K-Startup
     startup_keywords = ["K-Startup", "창업", "스타트업", "청년창업", "초기창업", "예비창업"]
     if any(k in org for k in startup_keywords) or any(k in title for k in ["창업", "스타트업"]):
         return 2
         
-    # 3순위: 기업마당 API
     if "기업마당" in org:
         return 3
         
     return 4
 
 def send_integrated_kakao_alimtalk(to_phone, user_name, matched_notices, user_region="전국", user_category="소상공인"):
-    """🔥 승인 템플릿 본문 100% 일치 매핑 & 카톡 실패 시 LMS 자동 전환(Fallback) 발송"""
     solapi_url = "https://api.solapi.com/messages/v4/send"
     headers = get_solapi_headers()
     today_str = datetime.date.today().strftime('%Y.%m.%d')
     clean_phone = ''.join(filter(str.isdigit, str(to_phone)))
     total_count = len(matched_notices)
 
-    # 💡 1. 테크노파크/경제진흥원 -> 2. 창업지원 -> 3. 기업마당 순으로 우선순위 정렬 후 상위 3건 추출
     sorted_notices = sorted(matched_notices, key=get_notice_priority)
     top_notices = sorted_notices[:3]
 
     notice_lines = []
     for idx, item in enumerate(top_notices, 1):
-        # 💡 공고명 자르기(말줄임표 ..) 제거하고 원본 전체 제목 노출
         t = f"[{item['org_name']}] {item['title']}"
-        
-        # 실제 마감일 날짜가 존재하는 경우에만 (~08.30) 형태로 표시
         d = item.get('deadline')
         if d and d not in ['상세링크 참조', '-', '']:
             notice_lines.append(f"{idx}. {t} (~{d})")
@@ -339,7 +308,6 @@ def send_integrated_kakao_alimtalk(to_phone, user_name, matched_notices, user_re
         "#{업종}": user_category_val
     }
 
-    # 🔥 승인 템플릿 원문 규격과 100% 일치
     alimtalk_text = (
         f"[비즈맵] 맞춤 지원사업 공고 안내\n\n"
         f"안녕하세요, {user_name_val}님!\n\n"
@@ -361,7 +329,7 @@ def send_integrated_kakao_alimtalk(to_phone, user_name, matched_notices, user_re
                 "pfId": SOLAPI_PF_ID,
                 "templateId": SOLAPI_TEMPLATE_ID,
                 "variables": variables,
-                "disableSms": False  # 🔥 카톡 실패 시 자동으로 일반 장문 문자(LMS) 대체 발송
+                "disableSms": False
             },
             "subject": "[비즈맵] 오늘의 맞춤 지원사업 통합 알림",
             "text": alimtalk_text
@@ -455,14 +423,31 @@ def fetch_with_playwright(target_url, org_name=""):
         print(f"  ⚠️ Playwright 구동 에러: {e}")
         return None
 
+# 🔥 [개선된 중복 문자열 정밀 제거 함수: 글자 수 편차/뱃지 태그 중복 완벽 제거]
 def clean_duplicate_text(text):
     text = " ".join(text.strip().split())
     text = text.rstrip("+>│| ").strip()
     length = len(text)
-    if length > 12:
+    
+    if length > 15:
+        # 1. 완벽히 2등분으로 일치하는 경우
         half = length // 2
         if text[:half].strip() == text[half:].strip():
             return text[:half].strip()
+        
+        # 2. '연장', '모집' 등 뱃지/공백으로 인해 앞뒤 길이가 약간 다른 상태로 반복된 경우
+        for offset in range(-12, 13):
+            split_point = half + offset
+            if 8 < split_point < length - 8:
+                part1 = text[:split_point].strip()
+                part2 = text[split_point:].strip()
+                
+                check_len = min(len(part1), len(part2))
+                if check_len > 12:
+                    # 핵심 제목 문장(10글자 이상)이 서로 교차 포함되어 있는지 검증
+                    if (part1[:check_len-4] in part2) or (part2[:check_len-4] in part1):
+                        # '연장' 같은 앞단 잉여 뱃지 태그가 붙지 않은 더 짧고 정갈한 문자열 채택
+                        return part1 if len(part1) <= len(part2) else part2
     return text
 
 def is_valid_real_notice(title):
@@ -652,6 +637,7 @@ def extract_title_and_link_smart(soup, org_name, target_url):
                         break
                 return txt, make_full_url(detail_a or links[0], target_url)
 
+    # 💡 일반 테이블 기반 게시판 (부산테크노파크 등 포함)
     for tr in soup.select("tbody tr, table tr"):
         a_tag = tr.select_one("td.subject a, td.title a, td.al a, td.left a, td.align_l a, a")
         if a_tag:
@@ -695,7 +681,6 @@ def add_notice_to_user_buckets(title, org_name, notice_region, category, target_
             elif any(c in kw for c in ["소상공인", "자영업", "창업", "제조", "IT", "스타트업"]):
                 user_category = kw.strip()
 
-        # 🔥 [정밀 지역 매칭] AND [정밀 업종 매칭] 통과 시에만 바구니에 추가
         if is_region_matching(user_region, notice_region, title) and is_category_matching(user_category, title, category, notice_region):
             u_data['notices'].append({
                 "title": title,
