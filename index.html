@@ -1598,26 +1598,30 @@
         return;
       }
 
-      const { data: user, error } = await supabaseClient
-        .from('users')
-        .select('*')
-        .eq('email', email)
-        .maybeSingle();
-
-      if (error || !user) {
-        alert('가입된 이메일 정보를 찾을 수 없습니다.');
+      const newPass = prompt('새롭게 사용할 비밀번호를 입력해 주세요 (최소 6자리).');
+      if (!newPass || newPass.length < 6) {
+        alert('비밀번호는 최소 6자리 이상 입력해야 합니다.');
         return;
       }
 
-      const kwStr = Array.isArray(user.keywords) ? user.keywords.join(' ') : (user.keywords || '');
-      if (!kwStr.includes(phone)) {
-        alert('입력하신 휴대폰 번호가 회원 정보와 일치하지 않습니다.');
+      // 🔒 [보안수정] 예전엔 본인확인 후에도 DB를 전혀 바꾸지 않고 "변경 완료"
+      // 알럿만 띄웠다(비밀번호 미설정 구버전 계정은 영원히 로그인 불가였음).
+      // 지금은 서버(api/auth/reset-password)가 본인확인 후 실제로 password_hash를 갱신한다.
+      let result;
+      try {
+        const res = await fetch('/api/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, phone, newPassword: newPass })
+        });
+        result = await res.json();
+      } catch (err) {
+        alert('비밀번호 재설정 처리 중 오류가 발생했습니다: ' + err.message);
         return;
       }
 
-      const newPass = prompt('새롭게 사용할 비밀번호를 입력해 주세요.');
-      if (!newPass || newPass.length < 4) {
-        alert('비밀번호는 최소 4자리 이상 입력해야 합니다.');
+      if (!result.success) {
+        alert('⚠️ ' + result.message);
         return;
       }
 
