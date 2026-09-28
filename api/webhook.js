@@ -1,8 +1,11 @@
 // api/webhook.js
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = 'https://hcyvfgeaquydsvtrcnrv.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_P19tdkj74ibIy7Xdle2i4w_M1B1mhV_';
+// 🔒 [보안수정] anon(publishable) 키 대신 service_role 키를 쓴다. 이 웹훅은 서버(Vercel)에서만
+// 실행되므로 RLS를 우회해서 users 테이블을 갱신할 권한이 필요하고, RLS를 제대로 켠 뒤에는
+// anon 키로는 어차피 이 update가 통과되지 않는다.
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export default async function handler(req, res) {
@@ -10,7 +13,21 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
+  // 🔒 (선택) 포트원 콘솔에 등록한 웹훅 URL에 ?secret=... 쿼리파라미터를 붙여뒀다면,
+  // 그 값을 여기서 검증해서 아무나 이 엔드포인트를 호출해 가짜 결제완료를 위조하지 못하게 한다.
+  // PORTONE_WEBHOOK_SECRET 환경변수를 설정하지 않으면 이 검증은 건너뛴다(기존과 동일한 수준).
+  const webhookSecret = process.env.PORTONE_WEBHOOK_SECRET;
+  if (webhookSecret && req.query.secret !== webhookSecret) {
+    return res.status(401).json({ success: false, message: '인증되지 않은 웹훅 요청입니다.' });
+  }
+
   const { imp_uid, merchant_uid, status } = req.body;
+
+  const impKey = process.env.IMP_KEY;
+  const impSecret = process.env.IMP_SECRET;
+  if (!impKey || !impSecret) {
+    return res.status(500).json({ success: false, message: 'IMP_KEY/IMP_SECRET 환경 변수가 설정되지 않았습니다.' });
+  }
 
   try {
     // 1. 포트원 인증 토큰 발급
@@ -18,8 +35,8 @@ export default async function handler(req, res) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        imp_key: '1135816288587000',
-        imp_secret: 'bllNTF6BztOjhIJBeDJULl4oSK2v9SlFK60VQcJSBdcr82YLzOuNeKL0FflE7RiWqRGUy7CLXC6NuG2e'
+        imp_key: impKey,
+        imp_secret: impSecret
       })
     });
     const tokenData = await tokenRes.json();
