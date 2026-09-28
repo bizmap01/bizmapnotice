@@ -4,10 +4,22 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
-  const { customer_uid, merchant_uid, amount, name, buyer_email, buyer_name } = req.body;
+  // 🔒 [보안수정] 결제 금액(amount)과 상품명(name)을 클라이언트 요청 body에서 그대로 받으면,
+  // 브라우저 개발자도구나 API 직접 호출로 amount를 0원이나 1원으로 조작해 보낼 수 있다.
+  // 결제 금액은 서버가 고정값으로 강제해야 하므로, 클라이언트에서는 더 이상 amount/name을 받지 않는다.
+  const PLAN_AMOUNT = 3900;
+  const PLAN_NAME = '비즈맵 지원사업 알림 (월간 정기구독)';
+
+  const { customer_uid, merchant_uid, buyer_email, buyer_name } = req.body;
 
   if (!customer_uid || !merchant_uid) {
     return res.status(400).json({ success: false, message: '필수 파라미터가 누락되었습니다.' });
+  }
+
+  const impKey = process.env.IMP_KEY;
+  const impSecret = process.env.IMP_SECRET;
+  if (!impKey || !impSecret) {
+    return res.status(500).json({ success: false, message: 'IMP_KEY/IMP_SECRET 환경 변수가 설정되지 않았습니다.' });
   }
 
   try {
@@ -16,8 +28,8 @@ export default async function handler(req, res) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        imp_key: '1135816288587000',
-        imp_secret: 'bllNTF6BztOjhIJBeDJULl4oSK2v9SlFK60VQcJSBdcr82YLzOuNeKL0FflE7RiWqRGUy7CLXC6NuG2e'
+        imp_key: impKey,
+        imp_secret: impSecret
       })
     });
 
@@ -38,8 +50,8 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         customer_uid: customer_uid,
         merchant_uid: merchant_uid,
-        amount: amount || 3900,
-        name: name || '비즈맵 지원사업 알림 (월간 정기구독)',
+        amount: PLAN_AMOUNT,
+        name: PLAN_NAME,
         buyer_email: buyer_email,
         buyer_name: buyer_name
       })
@@ -66,8 +78,8 @@ export default async function handler(req, res) {
             {
               merchant_uid: nextMerchantUid,
               schedule_at: scheduleAt,
-              amount: amount || 3900,
-              name: name || '비즈맵 지원사업 알림 (월간 정기구독)',
+              amount: PLAN_AMOUNT,
+              name: PLAN_NAME,
               buyer_email: buyer_email,
               buyer_name: buyer_name
             }
