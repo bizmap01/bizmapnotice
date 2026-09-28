@@ -10,14 +10,20 @@ export default async function handler(req, res) {
     return res.status(400).json({ success: false, message: 'customer_uid 누락' });
   }
 
+  const impKey = process.env.IMP_KEY;
+  const impSecret = process.env.IMP_SECRET;
+  if (!impKey || !impSecret) {
+    return res.status(500).json({ success: false, message: 'IMP_KEY/IMP_SECRET 환경 변수가 설정되지 않았습니다.' });
+  }
+
   try {
     // 1. 포트원 인증 토큰 발급
     const tokenRes = await fetch('https://api.iamport.kr/users/getToken', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        imp_key: '1135816288587000',
-        imp_secret: 'bllNTF6BztOjhIJBeDJULl4oSK2v9SlFK60VQcJSBdcr82YLzOuNeKL0FflE7RiWqRGUy7CLXC6NuG2e'
+        imp_key: impKey,
+        imp_secret: impSecret
       })
     });
 
