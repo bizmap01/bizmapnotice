@@ -69,22 +69,22 @@
     /* 관리자 인증 레이어 */
     .auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f172a; z-index: 999; display: flex; justify-content: center; align-items: center; }
     .auth-card { background: white; padding: 32px; border-radius: 16px; width: 360px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); }
-    .auth-card input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; margin: 8px 0; font-size: 14px; outline: none; }
+    .auth-card input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; margin: 16px 0 8px; font-size: 14px; outline: none; }
     .auth-card button { width: 100%; background: #2563eb; color: white; padding: 12px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; margin-top: 6px; }
     .auth-err-msg { color: #ef4444; font-size: 12px; font-weight: 700; margin-bottom: 8px; display: none; }
   </style>
 </head>
 <body>
 
-  <!-- 관리자 로그인 인증 레이어 (이메일 + 비밀번호, Supabase Auth) -->
+  <!-- 관리자 로그인 인증 레이어 (Supabase Auth 이메일/비밀번호 로그인 + 서버측 관리자 화이트리스트 검증) -->
   <div id="admin-auth" class="auth-overlay">
     <div class="auth-card">
       <h2 style="font-size: 20px; font-weight: 800; margin-bottom: 8px;">🔐 BIZMAP 관리자 접근</h2>
-      <p style="font-size: 13px; color: #64748b;">관리자 계정으로 로그인해 주세요.</p>
-      <input type="email" id="admin-email-input" placeholder="관리자 이메일" onkeydown="if(event.key==='Enter'){adminLogin()}">
+      <p style="font-size: 13px; color: #64748b;">Supabase Auth에 등록된 관리자 계정으로 로그인하세요.</p>
+      <input type="email" id="admin-email-input" placeholder="관리자 이메일" onkeydown="if(event.key==='Enter'){document.getElementById('admin-pass-input').focus()}">
       <input type="password" id="admin-pass-input" placeholder="비밀번호" onkeydown="if(event.key==='Enter'){adminLogin()}">
       <div id="admin-auth-err" class="auth-err-msg"></div>
-      <button type="button" onclick="adminLogin()">로그인</button>
+      <button type="button" onclick="adminLogin()">입장하기</button>
     </div>
   </div>
 
@@ -183,12 +183,17 @@
   </main>
 
   <script>
-    // 🔒 [보안수정] 코드에 박힌 단일 비밀번호 대신 Supabase Auth로 실제 로그인한다.
-    // 이 anon(publishable) 키는 비밀값이 아니라 공개용 키이고, 아래에서는 .auth.* 로그인
-    // 용도로만 쓴다 (DB 테이블 조회/수정은 전부 /api/admin/* 서버 API를 거친다).
+    // 🔒 [보안수정] 예전엔 비밀번호("bizmap1234!")가 이 JS 소스에 평문으로 박혀 있었고,
+    // 통과 여부도 sessionStorage 플래그 하나로만 체크했다. 브라우저 콘솔에서
+    // sessionStorage.setItem('bizmap_admin_logged','true') 한 줄이면 인증이 통째로 우회됐다.
+    // 지금은 Supabase Auth로 실제 로그인하고, 발급된 access_token을 서버(admin API)에 보내서
+    // 서버가 다시 한 번 "이 토큰이 유효한지 + 이메일이 관리자 화이트리스트에 있는지"를
+    // 검증한다(lib/adminAuth.js). 클라이언트 쪽 체크는 UX용일 뿐, 실제 방어선은 서버에 있다.
     const SUPABASE_URL = 'https://hcyvfgeaquydsvtrcnrv.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_P19tdkj74ibIy7Xdle2i4w_M1B1mhV_';
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // 이 키는 Supabase Auth 로그인 API를 호출하는 용도로만 쓰인다(공개돼도 되는 anon 키).
+    // users/notification_logs 테이블은 이 키로 더 이상 직접 조회하지 않는다 — /api/admin/* 를 통해서만 접근.
+    const SUPABASE_ANON_KEY = 'sb_publishable_AjkyaWE7SaAx7mJdGKvDOw_VPpSKVZa';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     let allUsersData = [];
     let allLogsData = [];
@@ -205,31 +210,44 @@
         return;
       }
 
-      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-      if (error) {
-        if (errDiv) { errDiv.innerText = '❌ 로그인 실패: ' + error.message; errDiv.style.display = 'block'; }
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error || !data.session) {
+        if (errDiv) {
+          errDiv.innerText = '❌ 로그인 실패: ' + (error ? error.message : '알 수 없는 오류');
+          errDiv.style.display = 'block';
+        }
         return;
       }
 
-      if (errDiv) errDiv.style.display = 'none';
-      document.getElementById('admin-auth').style.display = 'none';
-      loadAdminData();
+      // 실제 관리자 권한 확인은 서버가 한다 — 여기서는 일단 로그인 시도 후 데이터 조회로 검증한다.
+      const authLayer = document.getElementById('admin-auth');
+      if (authLayer) authLayer.style.display = 'none';
+      try {
+        await loadAdminData();
+      } catch (err) {
+        // 관리자 화이트리스트에 없는 계정이면 loadAdminData에서 401/403이 나므로 다시 로그인 화면으로.
+        await supabaseClient.auth.signOut();
+        if (authLayer) authLayer.style.display = 'flex';
+        if (errDiv) {
+          errDiv.innerText = '❌ ' + err.message;
+          errDiv.style.display = 'block';
+        }
+      }
     }
 
-    // /api/admin/* 서버 API를 호출하는 공통 헬퍼. 현재 로그인 세션의 access_token을
-    // Authorization 헤더에 실어 보내면, 서버가 requireAdmin()으로 이 사람이 진짜
-    // 관리자인지 다시 검증한다.
+    /** 현재 세션의 access_token을 Authorization 헤더에 실어 관리자 API를 호출한다. */
     async function adminFetch(path, options = {}) {
       const { data: { session } } = await supabaseClient.auth.getSession();
-      if (!session) throw new Error('로그인 세션이 없습니다. 다시 로그인해 주세요.');
-
+      if (!session) {
+        throw new Error('로그인 세션이 없습니다. 다시 로그인해 주세요.');
+      }
       const res = await fetch(path, {
         ...options,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
-          ...(options.headers || {})
-        }
+          ...(options.headers || {}),
+        },
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok || body.success === false) {
@@ -243,7 +261,13 @@
       if (session) {
         const authLayer = document.getElementById('admin-auth');
         if (authLayer) authLayer.style.display = 'none';
-        loadAdminData();
+        try {
+          await loadAdminData();
+        } catch (err) {
+          // 세션은 있지만 관리자 화이트리스트에 없거나 만료된 경우 다시 로그인 화면으로.
+          await supabaseClient.auth.signOut();
+          if (authLayer) authLayer.style.display = 'flex';
+        }
       }
     });
 
@@ -285,11 +309,7 @@
         await Promise.all([fetchUsers(), fetchLogs()]);
       } catch (err) {
         alert('❌ 데이터 갱신 중 오류: ' + err.message);
-        // 세션이 끊겼거나 관리자 권한이 없는 경우, 다시 로그인 화면으로 되돌린다.
-        await supabaseClient.auth.signOut();
-        const authLayer = document.getElementById('admin-auth');
-        if (authLayer) authLayer.style.display = 'flex';
-        throw err;
+        throw err; // 로그인 직후 호출 시 인증 실패를 호출부(adminLogin/DOMContentLoaded)가 알아채야 하므로 다시 던진다.
       } finally {
         if (btn) {
           btn.innerText = '🔄 데이터 새로고침';
@@ -299,20 +319,13 @@
     }
 
     async function fetchUsers() {
-      try {
-        const { users } = await adminFetch('/api/admin/users', { method: 'GET' });
-        allUsersData = users || [];
-        document.getElementById('kpi-total-users').innerText = `${allUsersData.length}명`;
+      const { users } = await adminFetch('/api/admin/users', { method: 'GET' });
+      document.getElementById('kpi-total-users').innerText = `${allUsersData.length}명`;
+      
+      const activeCount = allUsersData.filter(u => u.subscription_status === 'active' || u.subscription_status === 'cancel_reserved').length;
+      document.getElementById('kpi-active-users').innerText = `${activeCount}명`;
 
-        const activeCount = allUsersData.filter(u => u.subscription_status === 'active' || u.subscription_status === 'cancel_reserved').length;
-        document.getElementById('kpi-active-users').innerText = `${activeCount}명`;
-
-        renderUserTable(allUsersData);
-      } catch (error) {
-        console.error('유저 조회 실패:', error);
-        document.getElementById('user-table-body').innerHTML = `<tr><td colspan="7" style="text-align: center; color: #ef4444;">오류 발생: ${error.message}</td></tr>`;
-        throw error;
-      }
+      renderUserTable(allUsersData);
     }
 
     function renderUserTable(users) {
@@ -442,11 +455,11 @@
         console.warn('포트원 API 비동기 패스:', err);
       }
 
-      // 2. 서버 API(/api/admin/users)를 통해 DB 상태를 'cancel_reserved'로 즉시 갱신
+      // 2. DB 상태를 'cancel_reserved'로 즉시 갱신 (관리자 API 경유)
       try {
         await adminFetch('/api/admin/users', {
           method: 'PATCH',
-          body: JSON.stringify({ email, subscription_status: 'cancel_reserved' })
+          body: JSON.stringify({ email, subscription_status: 'cancel_reserved' }),
         });
 
         alert(`✅ [${email}] 정기결제 해지 완료!\n\n• 포트원 자동결제 예약 취소 요청 완료\n• '해지 예약 🟡' 상태로 전환되었습니다.${expireNotice}`);
@@ -460,19 +473,14 @@
       const tbody = document.getElementById('log-table-body');
       tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 30px;">발송 이력을 불러오는 중...</td></tr>';
 
-      try {
-        const { logs, count } = await adminFetch('/api/admin/logs', { method: 'GET' });
-        allLogsData = logs || [];
-        const totalCount = count !== null && count !== undefined ? count : allLogsData.length;
-        document.getElementById('kpi-total-logs').innerText = `${totalCount}건`;
-        document.getElementById('log-count-badge').innerText = `총 ${allLogsData.length}건`;
+      const { logs, count } = await adminFetch('/api/admin/logs', { method: 'GET' });
 
-        renderLogTable(allLogsData);
-      } catch (error) {
-        console.error('로그 조회 실패:', error);
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #ef4444;">로그 조회 오류: ${error.message}</td></tr>`;
-        throw error;
-      }
+      allLogsData = logs || [];
+      const totalCount = count !== null && count !== undefined ? count : allLogsData.length;
+      document.getElementById('kpi-total-logs').innerText = `${totalCount}건`;
+      document.getElementById('log-count-badge').innerText = `총 ${allLogsData.length}건`;
+
+      renderLogTable(allLogsData);
     }
 
     function renderLogTable(logs) {
@@ -543,12 +551,12 @@
       try {
         await adminFetch('/api/admin/users', {
           method: 'PATCH',
-          body: JSON.stringify({ email, subscription_status: nextStatus })
+          body: JSON.stringify({ email, subscription_status: nextStatus }),
         });
         alert('상태가 변경되었습니다.');
         fetchUsers();
-      } catch (error) {
-        alert('상태 변경 실패: ' + error.message);
+      } catch (err) {
+        alert('상태 변경 실패: ' + err.message);
       }
     }
 
@@ -565,12 +573,12 @@
       try {
         await adminFetch('/api/admin/users', {
           method: 'DELETE',
-          body: JSON.stringify({ confirm: '전체삭제' })
+          body: JSON.stringify({ confirm: confirmSecond }),
         });
         alert('✅ 모든 유저 데이터가 깔끔하게 초기화되었습니다!');
         loadAdminData();
-      } catch (error) {
-        alert('전체 삭제 실패: ' + error.message);
+      } catch (err) {
+        alert('전체 삭제 실패: ' + err.message);
       }
     }
   </script>
