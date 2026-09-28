@@ -1035,7 +1035,7 @@
 
   <script>
     const SUPABASE_URL = 'https://hcyvfgeaquydsvtrcnrv.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_AjkyaWE7SaAx7mJdGKvDOw_VPpSKVZa';
+    const SUPABASE_KEY = 'sb_publishable_P19tdkj74ibIy7Xdle2i4w_M1B1mhV_';
     const KAKAO_JS_KEY = '9bd12d1c0e5ec843cafec8513fc92cc8';
 
     const PORTONE_STORE_ID = "imp16466056"; 
@@ -1433,36 +1433,48 @@
         return;
       }
 
-      const { data: existingUser } = await supabaseClient
-        .from('users')
-        .select('email')
-        .eq('email', email)
-        .maybeSingle();
-
-      if (existingUser) {
-        alert('⚠️ 이미 가입된 이메일 주소입니다.\n\n기존 계정으로 로그인하시거나, 비밀번호 찾기를 이용해 주세요.');
-        showEmailLoginFormView();
+      // 🔒 [보안수정] 예전엔 users 테이블에 이메일이 존재하는지만 확인하고,
+      // 비밀번호는 저장/검증을 아예 안 했다(누구든 가입된 이메일만 알면 로그인 가능했음).
+      // 지금은 서버(api/auth/signup)가 비밀번호를 bcrypt로 해시해서 저장하고,
+      // 로그인 유지용 토큰을 발급해준다.
+      let result;
+      try {
+        const res = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, phone, email, password })
+        });
+        result = await res.json();
+      } catch (err) {
+        alert('회원가입 처리 중 오류가 발생했습니다: ' + err.message);
         return;
       }
 
-      currentKakaoUser = null;
-      authProviderType = 'email';
-      const dummyEmailUser = {
+      if (!result.success) {
+        alert('⚠️ ' + result.message);
+        if (result.message && result.message.includes('이미 가입된')) {
+          showEmailLoginFormView();
+        }
+        return;
+      }
+
+      currentKakaoUser = {
         id: 'email_' + Date.now(),
-        kakao_account: { email: email },
-        properties: { nickname: name || email.split('@')[0] },
-        phone: phone
+        kakao_account: { email: result.email },
+        properties: { nickname: result.name || name || email.split('@')[0] },
+        phone: result.phone || phone
       };
-      currentKakaoUser = dummyEmailUser;
+      authProviderType = 'email';
 
       localStorage.setItem('bizmap_user_session', JSON.stringify({
         user: currentKakaoUser,
-        provider: 'email'
+        provider: 'email',
+        token: result.token
       }));
 
       closeModal('login-choice-modal');
       updateUIOnLogin();
-      checkUserOnboard(dummyEmailUser);
+      checkUserOnboard(currentKakaoUser);
     }
 
     // 🔥 일반 이메일 로그인 시 영구 세션 보관
@@ -1479,28 +1491,48 @@
         return;
       }
 
-      const { data: user, error } = await supabaseClient
-        .from('users')
-        .select('*')
-        .eq('email', email)
-        .maybeSingle();
+      // 🔒 [보안수정] 예전엔 이메일이 users 테이블에 존재하기만 하면 비밀번호와 무관하게
+      // 로그인 성공 처리를 했다. 지금은 서버(api/auth/login)가 저장된 해시와
+      // 입력한 비밀번호를 실제로 대조한 뒤에만 로그인을 허용한다.
+      let result;
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        result = await res.json();
+      } catch (err) {
+        alert('로그인 처리 중 오류가 발생했습니다: ' + err.message);
+        return;
+      }
 
-      if (!user) {
-        alert('⚠️ 가입되지 않은 이메일 주소입니다.\n\n회원가입을 먼저 진행해 주세요.');
+      if (!result.success) {
+        if (result.migrationRequired) {
+          alert('⚠️ ' + result.message);
+          showFindAccountView('pw');
+          return;
+        }
+        if (result.message && result.message.includes('일치하지 않습니다')) {
+          alert('⚠️ ' + result.message);
+          return;
+        }
+        alert('⚠️ ' + result.message);
         showEmailSignupView();
         return;
       }
 
       currentKakaoUser = {
         id: 'email_' + Date.now(),
-        kakao_account: { email: user.email },
-        properties: { nickname: user.name || user.email.split('@')[0] }
+        kakao_account: { email: result.email },
+        properties: { nickname: result.name || result.email.split('@')[0] }
       };
       authProviderType = 'email';
 
       localStorage.setItem('bizmap_user_session', JSON.stringify({
         user: currentKakaoUser,
-        provider: 'email'
+        provider: 'email',
+        token: result.token
       }));
 
       closeModal('login-choice-modal');
