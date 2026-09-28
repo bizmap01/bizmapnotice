@@ -320,6 +320,7 @@
 
     async function fetchUsers() {
       const { users } = await adminFetch('/api/admin/users', { method: 'GET' });
+      allUsersData = users || [];
       document.getElementById('kpi-total-users').innerText = `${allUsersData.length}명`;
       
       const activeCount = allUsersData.filter(u => u.subscription_status === 'active' || u.subscription_status === 'cancel_reserved').length;
