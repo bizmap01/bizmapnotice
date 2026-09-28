@@ -69,21 +69,22 @@
     /* 관리자 인증 레이어 */
     .auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f172a; z-index: 999; display: flex; justify-content: center; align-items: center; }
     .auth-card { background: white; padding: 32px; border-radius: 16px; width: 360px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); }
-    .auth-card input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; margin: 16px 0 8px; font-size: 14px; outline: none; }
+    .auth-card input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; margin: 8px 0; font-size: 14px; outline: none; }
     .auth-card button { width: 100%; background: #2563eb; color: white; padding: 12px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; margin-top: 6px; }
     .auth-err-msg { color: #ef4444; font-size: 12px; font-weight: 700; margin-bottom: 8px; display: none; }
   </style>
 </head>
 <body>
 
-  <!-- 관리자 로그인 인증 비밀번호 레이어 -->
+  <!-- 관리자 로그인 인증 레이어 (이메일 + 비밀번호, Supabase Auth) -->
   <div id="admin-auth" class="auth-overlay">
     <div class="auth-card">
       <h2 style="font-size: 20px; font-weight: 800; margin-bottom: 8px;">🔐 BIZMAP 관리자 접근</h2>
-      <p style="font-size: 13px; color: #64748b;">운영 비밀번호를 입력해 주세요.</p>
-      <input type="password" id="admin-pass-input" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter'){checkAdminPass()}">
+      <p style="font-size: 13px; color: #64748b;">관리자 계정으로 로그인해 주세요.</p>
+      <input type="email" id="admin-email-input" placeholder="관리자 이메일" onkeydown="if(event.key==='Enter'){adminLogin()}">
+      <input type="password" id="admin-pass-input" placeholder="비밀번호" onkeydown="if(event.key==='Enter'){adminLogin()}">
       <div id="admin-auth-err" class="auth-err-msg"></div>
-      <button type="button" onclick="checkAdminPass()">입장하기</button>
+      <button type="button" onclick="adminLogin()">로그인</button>
     </div>
   </div>
 
@@ -182,40 +183,69 @@
   </main>
 
   <script>
-    function checkAdminPass() {
-      const input = document.getElementById('admin-pass-input');
-      const errDiv = document.getElementById('admin-auth-err');
-      const pass = input ? input.value.trim() : '';
-
-      if (pass === 'bizmap1234!' || pass === 'bizmap1234') {
-        if (errDiv) errDiv.style.display = 'none';
-        sessionStorage.setItem('bizmap_admin_logged', 'true');
-        document.getElementById('admin-auth').style.display = 'none';
-        loadAdminData();
-      } else {
-        if (errDiv) {
-          errDiv.innerText = '❌ 비밀번호가 올바르지 않습니다. (bizmap1234!)';
-          errDiv.style.display = 'block';
-        } else {
-          alert('비밀번호가 올바르지 않습니다. (bizmap1234!)');
-        }
-      }
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-      if (sessionStorage.getItem('bizmap_admin_logged') === 'true') {
-        const authLayer = document.getElementById('admin-auth');
-        if (authLayer) authLayer.style.display = 'none';
-        loadAdminData();
-      }
-    });
-
+    // 🔒 [보안수정] 코드에 박힌 단일 비밀번호 대신 Supabase Auth로 실제 로그인한다.
+    // 이 anon(publishable) 키는 비밀값이 아니라 공개용 키이고, 아래에서는 .auth.* 로그인
+    // 용도로만 쓴다 (DB 테이블 조회/수정은 전부 /api/admin/* 서버 API를 거친다).
     const SUPABASE_URL = 'https://hcyvfgeaquydsvtrcnrv.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_P19tdkj74ibIy7Xdle2i4w_M1B1mhV_';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let allUsersData = [];
     let allLogsData = [];
+
+    async function adminLogin() {
+      const emailInput = document.getElementById('admin-email-input');
+      const passInput = document.getElementById('admin-pass-input');
+      const errDiv = document.getElementById('admin-auth-err');
+      const email = emailInput ? emailInput.value.trim() : '';
+      const password = passInput ? passInput.value : '';
+
+      if (!email || !password) {
+        if (errDiv) { errDiv.innerText = '이메일과 비밀번호를 입력해 주세요.'; errDiv.style.display = 'block'; }
+        return;
+      }
+
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) {
+        if (errDiv) { errDiv.innerText = '❌ 로그인 실패: ' + error.message; errDiv.style.display = 'block'; }
+        return;
+      }
+
+      if (errDiv) errDiv.style.display = 'none';
+      document.getElementById('admin-auth').style.display = 'none';
+      loadAdminData();
+    }
+
+    // /api/admin/* 서버 API를 호출하는 공통 헬퍼. 현재 로그인 세션의 access_token을
+    // Authorization 헤더에 실어 보내면, 서버가 requireAdmin()으로 이 사람이 진짜
+    // 관리자인지 다시 검증한다.
+    async function adminFetch(path, options = {}) {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session) throw new Error('로그인 세션이 없습니다. 다시 로그인해 주세요.');
+
+      const res = await fetch(path, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          ...(options.headers || {})
+        }
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || body.success === false) {
+        throw new Error(body.message || `요청 실패 (HTTP ${res.status})`);
+      }
+      return body;
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) {
+        const authLayer = document.getElementById('admin-auth');
+        if (authLayer) authLayer.style.display = 'none';
+        loadAdminData();
+      }
+    });
 
     function switchTab(tabName, element) {
       document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
@@ -255,6 +285,11 @@
         await Promise.all([fetchUsers(), fetchLogs()]);
       } catch (err) {
         alert('❌ 데이터 갱신 중 오류: ' + err.message);
+        // 세션이 끊겼거나 관리자 권한이 없는 경우, 다시 로그인 화면으로 되돌린다.
+        await supabaseClient.auth.signOut();
+        const authLayer = document.getElementById('admin-auth');
+        if (authLayer) authLayer.style.display = 'flex';
+        throw err;
       } finally {
         if (btn) {
           btn.innerText = '🔄 데이터 새로고침';
@@ -264,24 +299,20 @@
     }
 
     async function fetchUsers() {
-      const { data: users, error } = await supabaseClient
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false });
+      try {
+        const { users } = await adminFetch('/api/admin/users', { method: 'GET' });
+        allUsersData = users || [];
+        document.getElementById('kpi-total-users').innerText = `${allUsersData.length}명`;
 
-      if (error) {
+        const activeCount = allUsersData.filter(u => u.subscription_status === 'active' || u.subscription_status === 'cancel_reserved').length;
+        document.getElementById('kpi-active-users').innerText = `${activeCount}명`;
+
+        renderUserTable(allUsersData);
+      } catch (error) {
         console.error('유저 조회 실패:', error);
         document.getElementById('user-table-body').innerHTML = `<tr><td colspan="7" style="text-align: center; color: #ef4444;">오류 발생: ${error.message}</td></tr>`;
-        return;
+        throw error;
       }
-
-      allUsersData = users || [];
-      document.getElementById('kpi-total-users').innerText = `${allUsersData.length}명`;
-      
-      const activeCount = allUsersData.filter(u => u.subscription_status === 'active' || u.subscription_status === 'cancel_reserved').length;
-      document.getElementById('kpi-active-users').innerText = `${activeCount}명`;
-
-      renderUserTable(allUsersData);
     }
 
     function renderUserTable(users) {
@@ -411,14 +442,12 @@
         console.warn('포트원 API 비동기 패스:', err);
       }
 
-      // 2. Supabase DB 상태를 'cancel_reserved'로 즉시 갱신
+      // 2. 서버 API(/api/admin/users)를 통해 DB 상태를 'cancel_reserved'로 즉시 갱신
       try {
-        const { error } = await supabaseClient
-          .from('users')
-          .update({ subscription_status: 'cancel_reserved' })
-          .eq('email', email);
-
-        if (error) throw error;
+        await adminFetch('/api/admin/users', {
+          method: 'PATCH',
+          body: JSON.stringify({ email, subscription_status: 'cancel_reserved' })
+        });
 
         alert(`✅ [${email}] 정기결제 해지 완료!\n\n• 포트원 자동결제 예약 취소 요청 완료\n• '해지 예약 🟡' 상태로 전환되었습니다.${expireNotice}`);
         fetchUsers();
@@ -431,24 +460,19 @@
       const tbody = document.getElementById('log-table-body');
       tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 30px;">발송 이력을 불러오는 중...</td></tr>';
 
-      const { data: logs, count, error } = await supabaseClient
-        .from('notification_logs')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .limit(5000);
+      try {
+        const { logs, count } = await adminFetch('/api/admin/logs', { method: 'GET' });
+        allLogsData = logs || [];
+        const totalCount = count !== null && count !== undefined ? count : allLogsData.length;
+        document.getElementById('kpi-total-logs').innerText = `${totalCount}건`;
+        document.getElementById('log-count-badge').innerText = `총 ${allLogsData.length}건`;
 
-      if (error) {
+        renderLogTable(allLogsData);
+      } catch (error) {
         console.error('로그 조회 실패:', error);
         tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #ef4444;">로그 조회 오류: ${error.message}</td></tr>`;
-        return;
+        throw error;
       }
-
-      allLogsData = logs || [];
-      const totalCount = count !== null && count !== undefined ? count : allLogsData.length;
-      document.getElementById('kpi-total-logs').innerText = `${totalCount}건`;
-      document.getElementById('log-count-badge').innerText = `총 ${allLogsData.length}건`;
-
-      renderLogTable(allLogsData);
     }
 
     function renderLogTable(logs) {
@@ -516,16 +540,15 @@
     async function toggleUserStatus(email, nextStatus) {
       if (!confirm(`해당 유저의 알림 상태를 [${nextStatus}]로 변경하시겠습니까?`)) return;
 
-      const { error } = await supabaseClient
-        .from('users')
-        .update({ subscription_status: nextStatus })
-        .eq('email', email);
-
-      if (error) {
-        alert('상태 변경 실패: ' + error.message);
-      } else {
+      try {
+        await adminFetch('/api/admin/users', {
+          method: 'PATCH',
+          body: JSON.stringify({ email, subscription_status: nextStatus })
+        });
         alert('상태가 변경되었습니다.');
         fetchUsers();
+      } catch (error) {
+        alert('상태 변경 실패: ' + error.message);
       }
     }
 
@@ -539,16 +562,15 @@
         return;
       }
 
-      const { error } = await supabaseClient
-        .from('users')
-        .delete()
-        .neq('email', '');
-
-      if (error) {
-        alert('전체 삭제 실패: ' + error.message);
-      } else {
+      try {
+        await adminFetch('/api/admin/users', {
+          method: 'DELETE',
+          body: JSON.stringify({ confirm: '전체삭제' })
+        });
         alert('✅ 모든 유저 데이터가 깔끔하게 초기화되었습니다!');
         loadAdminData();
+      } catch (error) {
+        alert('전체 삭제 실패: ' + error.message);
       }
     }
   </script>
