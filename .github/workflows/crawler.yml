@@ -3,6 +3,9 @@ name: Bizmap Notice Daily Crawler
 on:
   workflow_dispatch: # Vercel Cron API 호출 및 수동 실행(Run workflow) 트리거
 
+permissions:
+  contents: write # dev_alert_history.json 커밋을 위해 필요
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -15,14 +18,40 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
+        cache: 'pip'
 
     - name: 3. 모듈 및 Playwright 패키지 설치
       run: |
         python -m pip install --upgrade pip
-        pip install requests pandas curl_cffi beautifulsoup4 openpyxl supabase playwright
+        pip install -r requirements.txt
         python -m playwright install chromium
         sudo $(which python) -m playwright install-deps
 
     - name: 4. 매일 아침 크롤러 및 알림톡/문자 발송 실행
+      env:
+        # 🔒 실제 키 값은 여기 없다. 전부 저장소 Settings > Secrets and variables > Actions 에서 등록.
+        SOLAPI_KEY: ${{ secrets.SOLAPI_KEY }}
+        SOLAPI_SECRET: ${{ secrets.SOLAPI_SECRET }}
+        SOLAPI_PF_ID: ${{ secrets.SOLAPI_PF_ID }}
+        SOLAPI_TEMPLATE_ID: ${{ secrets.SOLAPI_TEMPLATE_ID }}
+        MY_PHONE: ${{ secrets.MY_PHONE }}
+        DATA_GO_KEY: ${{ secrets.DATA_GO_KEY }}
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        # RLS를 켠 뒤에는 anon 키로는 users/notification_logs를 못 읽으므로
+        # 이 스크립트는 service_role 키를 써야 한다 (Supabase 대시보드 > Project Settings > API).
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       run: |
         python main.py
+
+    - name: 5. 개발자 경고 이력(dev_alert_history.json) 변경분 커밋
+      # 이 파일이 러너에만 남고 저장소엔 반영이 안 되면, 다음 실행이 새 러너에서
+      # 시작할 때마다 "오늘 이미 경고 보냈는지" 이력이 항상 비어 있는 상태가 된다.
+      # 즉 같은 날 워크플로우를 여러 번 돌리면 개발자 경고 문자가 중복 발송될 수 있으므로,
+      # 실행 후 변경된 이력 파일을 그대로 저장소에 커밋해서 다음 실행에서도 이어지게 한다.
+      if: always()
+      run: |
+        git config user.name "bizmap-crawler-bot"
+        git config user.email "actions@users.noreply.github.com"
+        git add dev_alert_history.json
+        git diff --cached --quiet || git commit -m "chore: dev_alert_history.json 갱신 [skip ci]"
+        git push || echo "push할 변경사항이 없거나 이미 최신입니다."
