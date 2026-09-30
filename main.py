@@ -236,6 +236,23 @@ def _is_region_false_positive(reg, title):
     """title 안의 reg 문자열이 실제로는 무관한 합성어의 일부인지 검사한다."""
     return any(compound in title for compound in REGION_NAME_FALSE_POSITIVE_WORDS.get(reg, ()))
 
+# 🔧 [필터링 수정] "동남권"(부산·울산·경남), "충청권/충청권역"(충북·충남) 처럼
+# 실제 공고 제목에 흔히 쓰이는 광역 "권역" 명칭은 ALL_KOREA_REGIONS(시/도 단위)
+# 어디에도 부분 문자열로 걸리지 않는다. 그래서 notice_region="전국"인 공고(특히
+# K-Startup/기업마당 API 수집 건)의 제외 루프가 이런 특정 권역 공고를 걸러내지
+# 못하고 전체 사용자에게 새어나갔다(예: "충청권역" 공고가 부산/경기 사용자에게도 발송).
+REGION_CLUSTER_MAP = {
+    "수도권": ["서울", "경기", "인천"],
+    "동남권": ["부산", "울산", "경남"],
+    "충청권역": ["충북", "충남", "대전", "세종"],
+    "충청권": ["충북", "충남", "대전", "세종"],
+    "호남권": ["전북", "전남", "광주"],
+    "영남권": ["대구", "경북", "부산", "울산", "경남"],
+    "강원권역": ["강원"],
+    "강원권": ["강원"],
+    "제주권": ["제주"],
+}
+
 def is_region_matching(user_region, notice_region, title):
     u_reg = (user_region
              .replace("특별자치시", "")
@@ -253,6 +270,10 @@ def is_region_matching(user_region, notice_region, title):
         return True
 
     if notice_region == "전국":
+        for cluster, provinces in REGION_CLUSTER_MAP.items():
+            if cluster in title and u_reg not in provinces:
+                return False
+
         for reg in ALL_KOREA_REGIONS:
             if (reg in title and not _is_region_false_positive(reg, title)
                     and u_reg not in title and u_reg not in reg and reg not in u_reg):
