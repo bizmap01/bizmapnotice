@@ -126,11 +126,39 @@ def is_generic_url(link):
     ]
     return any(k in link for k in generic_keywords)
 
+def fetch_all_notification_logs(page_size=1000, max_pages=500):
+    """notification_logs 전체를 (title, link)로 페이지 단위로 모두 읽어 온다.
+    정렬 기준을 고정해야 페이지 경계에서 행이 빠지거나 겹치지 않는다."""
+    rows = []
+    start = 0
+    for _ in range(max_pages):
+        page = (
+            supabase.table("notification_logs")
+            .select("title, link")
+            .order("created_at")
+            .order("email")
+            .order("title")
+            .order("link")
+            .range(start, start + page_size - 1)
+            .execute()
+        )
+        data = page.data or []
+        rows.extend(data)
+        if len(data) < page_size:
+            break
+        start += page_size
+    return rows
+
 def load_history_from_supabase():
     """Supabase DB에서 과거 발송된 공고 목록(제목/개별 상세링크)을 로드"""
     sent_set = set()
     try:
-        res = supabase.table("notification_logs").select("title, link").execute()
+        # 🔧 [버그수정] 예전엔 .execute() 한 번만 호출해서 Supabase 기본 상한(1000행)에서 조용히
+        # 잘렸다. 이력이 1000행을 넘기면(2026-10-01 실제 발생: 전날 965건 → 다음날 정확히 1000건)
+        # 가장 최근에 발송한 행들이 비교 대상에서 빠져서, 이미 보낸 공고가 "신규"로 다시
+        # 잡혀 유저에게 중복 발송됐다. 이제 1000행씩 끝까지 페이지를 넘겨가며 전부 읽는다.
+        all_rows = fetch_all_notification_logs()
+        res = type("Res", (), {"data": all_rows})()
         if res.data:
             for item in res.data:
                 raw_title = item.get("title", "").strip()
@@ -762,7 +790,23 @@ def make_full_url(a_elem, target_url):
 
     return target_url
 
-def extract_title_and_link_smart(soup, org_name, target_url):
+# 게시판 하나에서 한 번에 확인할 최신 공고 개수(위에서부터). 크롤러 실행 사이에 새 글이
+# 여러 개 올라와도 놓치지 않기 위함. 너무 키우면 오래된 글까지 신규로 잡힐 수 있음.
+MAX_ITEMS_PER_BOARD = 20
+
+def extract_titles_and_links_smart(soup, org_name, target_url, limit=MAX_ITEMS_PER_BOARD):
+    """게시판에서 (제목, 링크)를 위에서부터 최대 limit개까지 추출한다.
+    기관별 전용 규칙 → 일반 규칙 순으로 시도하고, 처음으로 결과가 나온 규칙의 결과만 쓴다."""
+    results = []
+    seen_titles = set()
+
+    def _add(txt, link):
+        if txt in seen_titles:
+            return False
+        seen_titles.add(txt)
+        results.append((txt, link))
+        return len(results) >= limit
+
     unwanted_selectors = [
         "header", "footer", "nav", "#header", "#footer", "#gnb", "#lnb", "#snb",
         ".header", ".footer", ".gnb", ".lnb", ".snb", ".sidebar", ".top_menu",
@@ -775,6 +819,9 @@ def extract_title_and_link_smart(soup, org_name, target_url):
         for tag in soup.select(sel):
             tag.decompose()
 
+    if results:
+        return results
+
     if "경상북도경제진흥원" in org_name:
         for item in soup.select(".gallery-title, .gallery_title, .gallery-item, .sub_biz_list li, .card_box, .biz_list li, article, .item"):
             a_tag = item.find("a") or item.find_parent("a")
@@ -782,25 +829,41 @@ def extract_title_and_link_smart(soup, org_name, target_url):
             raw = re.sub(r'^([가-힣]{2,10}(지원|육성|사업))?\s*(진행중|모집중|접수중|마감|종료|준비중)?\s*', '', raw)
             txt = clean_duplicate_text(raw)
             if a_tag and is_valid_real_notice(txt):
-                return txt, make_full_url(a_tag, target_url)
+                if _add(txt, make_full_url(a_tag, target_url)):
+                    return results
+
+    if results:
+        return results
 
     if "강원특별자치도" in org_name:
         for node in soup.select(".bo_tit a, td.td_subject a, .list_subject a, .subject a, .item_subject a"):
             txt = clean_duplicate_text(node.get_text()).strip()
             if is_valid_real_notice(txt):
-                return txt, make_full_url(node, target_url)
+                if _add(txt, make_full_url(node, target_url)):
+                    return results
+
+    if results:
+        return results
 
     if "경북테크노파크" in org_name:
         for a in soup.select("a[href*='boardDetail.do'], a[onclick*='fn_egov_inqire_notice'], .bbs_list td.subject a, .board_list td a, table tbody tr td a"):
             txt = clean_duplicate_text(a.get_text(" ", strip=True))
             if is_valid_real_notice(txt) and not txt.isdigit():
-                return txt, make_full_url(a, target_url)
+                if _add(txt, make_full_url(a, target_url)):
+                    return results
+
+    if results:
+        return results
 
     if "대전일자리" in org_name:
         for a in soup.select("a[href*='TSK_PBNC_ID'], a[href*='form.tab'], a[href*='view'], .b-cont a, .board_list li a, .bbs_list tbody tr a, .list_item a"):
             txt = clean_duplicate_text(a.get_text(" ", strip=True)).strip()
             if is_valid_real_notice(txt) and len(txt) >= 10 and re.search(r'(공고|모집|지원사업|선정|참여)', txt):
-                return txt, make_full_url(a, target_url)
+                if _add(txt, make_full_url(a, target_url)):
+                    return results
+
+    if results:
+        return results
 
     if "전북테크노파크" in org_name:
         for tr in soup.select("tbody tr, table tr"):
@@ -808,7 +871,11 @@ def extract_title_and_link_smart(soup, org_name, target_url):
             if a_tag:
                 txt = clean_duplicate_text(a_tag.text)
                 if is_valid_real_notice(txt):
-                    return txt, make_full_url(a_tag, target_url)
+                    if _add(txt, make_full_url(a_tag, target_url)):
+                        return results
+
+    if results:
+        return results
 
     if "경기도경제과학" in org_name or "경기기업비서" in org_name:
         for card in soup.select(".card-body, .card, .prj_list_box, .card_item, ul.list li, .list_box li"):
@@ -816,7 +883,11 @@ def extract_title_and_link_smart(soup, org_name, target_url):
             if a_tag:
                 txt = clean_duplicate_text(a_tag.get_text(" ", strip=True))
                 if is_valid_real_notice(txt):
-                    return txt, make_full_url(a_tag, target_url)
+                    if _add(txt, make_full_url(a_tag, target_url)):
+                        return results
+
+    if results:
+        return results
 
     if "서울경제진흥원" in org_name:
         for card in soup.select(".company_support_list li, .card_box, div.card_inner"):
@@ -824,7 +895,11 @@ def extract_title_and_link_smart(soup, org_name, target_url):
             if a_tag:
                 txt = clean_duplicate_text(a_tag.text)
                 if is_valid_real_notice(txt):
-                    return txt, make_full_url(a_tag, target_url)
+                    if _add(txt, make_full_url(a_tag, target_url)):
+                        return results
+
+    if results:
+        return results
 
     if "연구개발특구" in org_name:
         for item in soup.select(".board_list li, .bbs_list li, ul.lst li, .list li, ul li, li, table tbody tr"):
@@ -844,29 +919,48 @@ def extract_title_and_link_smart(soup, org_name, target_url):
                     if "자세히보기" in a.get_text() or a.get("href", "") not in ("", "#", "#none"):
                         detail_a = a
                         break
-                return txt, make_full_url(detail_a or links[0], target_url)
+                if _add(txt, make_full_url(detail_a or links[0], target_url)):
+                    return results
 
     # 💡 일반 테이블 기반 게시판 (부산테크노파크 등 포함)
+    if results:
+        return results
+
     for tr in soup.select("tbody tr, table tr"):
         a_tag = tr.select_one("td.subject a, td.title a, td.al a, td.left a, td.align_l a, a")
         if a_tag:
             txt = clean_duplicate_text(a_tag.text)
             if is_valid_real_notice(txt):
-                return txt, make_full_url(a_tag, target_url)
+                if _add(txt, make_full_url(a_tag, target_url)):
+                    return results
+
+    if results:
+        return results
 
     for a in soup.select(".kboard-list-title a, .kboard-title a, .pms-board-list td a, .bbs_list td a, .board_list a, ul.board_list li a"):
         txt = clean_duplicate_text(a.text)
         if is_valid_real_notice(txt):
             if "javascript" not in txt.lower():
-                return txt, make_full_url(a, target_url)
+                if _add(txt, make_full_url(a, target_url)):
+                    return results
+
+    if results:
+        return results
 
     for node in soup.select("li a, article a, .item a, .card a, [class*='card'] a, [class*='item'] a"):
         raw = node.get_text(" ", strip=True)
         txt = clean_duplicate_text(raw).strip()
         if is_valid_real_notice(txt) and re.search(r'(공고|모집|지원사업|참여기업|선정|신청|접수|사업|모집공고)', txt):
-            return txt, make_full_url(node, target_url)
+            if _add(txt, make_full_url(node, target_url)):
+                return results
 
-    return None, target_url
+    return results
+
+
+def extract_title_and_link_smart(soup, org_name, target_url):
+    """(하위 호환) 가장 위의 공고 1건만 반환."""
+    items = extract_titles_and_links_smart(soup, org_name, target_url, limit=1)
+    return items[0] if items else (None, target_url)
 
 # ==========================================
 # 5. 공고 수집 및 유저 바구니 축적 함수
@@ -1264,27 +1358,26 @@ def main():
         print(f"🔍 [{org_name} - {category}] 탐색 중...")
 
         try:
-            latest_title = None
-            notice_link = target_url
-            
+            items = []
+
             if any(dyn_org in org_name for dyn_org in DYNAMIC_ORGS):
                 pw_html = fetch_with_playwright(target_url, org_name)
                 if pw_html:
                     pw_soup = BeautifulSoup(pw_html, "html.parser")
-                    latest_title, notice_link = extract_title_and_link_smart(pw_soup, org_name, target_url)
+                    items = extract_titles_and_links_smart(pw_soup, org_name, target_url)
             else:
                 res = fetch_cffi_with_retry(target_url, max_retries=2)
                 if res and res.status_code == 200:
                     soup = BeautifulSoup(res.content.decode('utf-8', errors='ignore'), "html.parser")
-                    latest_title, notice_link = extract_title_and_link_smart(soup, org_name, target_url)
+                    items = extract_titles_and_links_smart(soup, org_name, target_url)
 
-                if not latest_title:
+                if not items:
                     pw_html = fetch_with_playwright(target_url, org_name)
                     if pw_html:
                         pw_soup = BeautifulSoup(pw_html, "html.parser")
-                        latest_title, notice_link = extract_title_and_link_smart(pw_soup, org_name, target_url)
+                        items = extract_titles_and_links_smart(pw_soup, org_name, target_url)
 
-            if not latest_title:
+            if not items:
                 # 🔧 [버그수정] 예전엔 이 케이스(파싱 자체가 아무 제목도 못 찾음)에서
                 # send_dev_warning이 호출되지 않았다. 정작 이 함수가 보내는 경고 문구는
                 # "공고 제목 미수집 또는 디자인 개편 감지"라고 돼 있는데, 그 상황을 감지하는
@@ -1294,16 +1387,22 @@ def main():
                 send_dev_warning(org_name, category, target_url, dev_history)
                 continue
 
-            if not is_valid_real_notice(latest_title):
-                print("  ℹ️ 최신 공고 제목을 찾음 (필터링됨 → 변동 없음으로 처리)")
-                continue
-
-            if latest_title in sent_history or (not is_generic_url(notice_link) and notice_link in sent_history):
-                print("  ✅ 변동 없음 (이미 발송 완료된 공고)")
-            else:
+            # 🔧 [개선] 예전엔 게시판당 맨 위 1건만 확인해서, 실행 사이에 새 글이 여러 개
+            # 올라오면 나머지가 영영 누락됐다. 이제 위에서부터 최대 MAX_ITEMS_PER_BOARD건을
+            # 확인하고, 이미 발송 이력에 있는 건 건너뛴다.
+            new_found = 0
+            for latest_title, notice_link in items:
+                if not is_valid_real_notice(latest_title):
+                    continue
+                if latest_title in sent_history or (not is_generic_url(notice_link) and notice_link in sent_history):
+                    continue
                 print(f"  📢 [신규 공고 발견!] {latest_title}")
                 print(f"  🔗 개별 상세 링크: {notice_link}")
                 add_notice_to_user_buckets(latest_title, org_name, region, category, notice_link, user_buckets, sent_history, pending_logs)
+                new_found += 1
+
+            if new_found == 0:
+                print("  ✅ 변동 없음 (이미 발송 완료된 공고)")
 
         except Exception as e:
             print(f"  ❌ 크롤링 에러: {e}")
