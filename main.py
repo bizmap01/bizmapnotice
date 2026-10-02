@@ -678,10 +678,62 @@ def clean_duplicate_text(text):
                         return part1 if len(part1) <= len(part2) else part2
     return text
 
+# 🆕 공고가 아닌데 공고처럼 잡히는 메뉴/분류 탭 제목. 통째로 일치할 때만 제외한다
+#    (부분 일치로 막으면 "인적자원개발위원회"가 들어간 정상 공고까지 막힐 수 있어서).
+JUNK_EXACT_TITLES = {
+    "인적자원개발위원회", "강원광역새일센터",                                   # 강원경제진흥원 분류 탭
+    "증명서발급신청", "사업계획및예산", "사업성과및재무현황", "사용변경취소신청",   # 전남일자리경제진흥원 메뉴
+}
+
+KST = datetime.timezone(datetime.timedelta(hours=9))
+
+# 제목 속 "~9.30", "~26.8.28", "(9.1.~9.20.)" 같은 마감일 표기. 뒤에 숫자/배/%가 붙는
+# "~2.5배" 같은 건 날짜가 아니므로 제외한다.
+_TITLE_DEADLINE_RE = re.compile(r"~\s*(?:(\d{2,4})\s*\.\s*)?(\d{1,2})\s*\.\s*(\d{1,2})(?![\d%배])")
+_CLOSED_LINK_RE = re.compile(r"[?&]state=end(?:&|$)")
+
+def title_deadline_passed(title, today=None):
+    """제목에 적힌 마감일(맨 마지막 '~날짜')이 오늘보다 과거면 True. 마감일 표기가 없으면 False."""
+    today = today or datetime.datetime.now(KST).date()
+    last = None
+    for m in _TITLE_DEADLINE_RE.finditer(title or ""):
+        y, mo, d = m.groups()
+        mo, d = int(mo), int(d)
+        if not (1 <= mo <= 12 and 1 <= d <= 31):
+            continue
+        if y:
+            y = int(y)
+            y = y + 2000 if y < 100 else y
+        else:
+            y = today.year
+            if today.month >= 11 and mo <= 2:   # 연말에 올라온 "~1.15"는 내년 1월
+                y += 1
+        try:
+            last = datetime.date(y, mo, d)
+        except ValueError:
+            continue
+    return last is not None and last < today
+
+def is_expired_notice(title, link=""):
+    """이미 마감된 공고인지 판단한다(발송 대상에서 제외).
+    - 제목의 마감일이 오늘 이전  (예: "...(~26.8.28)")
+    - 링크에 state=end            (부산경제진흥원: 마감된 글)
+    - 제목이 "완료("로 시작        (강원TP: 완료 처리된 글)
+    마감일이 제목에 없으면 판단할 수 없으므로 False(=그대로 통과)."""
+    t = (title or "").strip()
+    if t.startswith("완료"):
+        return True
+    if link and _CLOSED_LINK_RE.search(link):
+        return True
+    return title_deadline_passed(t)
+
 def is_valid_real_notice(title):
     if not title or len(title) < 8:
         return False
-        
+
+    if title.replace(" ", "") in JUNK_EXACT_TITLES:
+        return False
+
     clean_t = title.replace(" ", "")
     for noise in PURE_SYSTEM_NOISE:
         if noise.replace(" ", "") in clean_t:
@@ -1036,6 +1088,9 @@ def collect_kstartup_api(user_buckets, sent_history, pending_logs):
             if isinstance(items, dict):
                 items = [items]
 
+            if items:
+                print(f"  🧭 [K-Startup 응답 키 점검] {sorted(items[0].keys()) if isinstance(items[0], dict) else type(items[0])}")
+
             new_count = 0
             for item in items:
                 title = str(item.get('biz_pbanc_nm') or item.get('intg_pbanc_biz_nm') or item.get('pbancNm') or '').strip()
@@ -1047,7 +1102,13 @@ def collect_kstartup_api(user_buckets, sent_history, pending_logs):
                 if title in sent_history or (detail_url and detail_url in sent_history):
                     continue
 
+                if is_expired_notice(title):
+                    continue
+
+                # 🔎 [점검용 로그] K-Startup 응답의 지원지역/모집여부/마감일 값이 실제로 어떻게 오는지 확인한다.
+                #   (아직 필터에는 쓰지 않는다. 값이 믿을 만하면 지역 필터에 반영할 예정)
                 print(f"  📢 [K-Startup 신규 공고 발견!] {title}")
+                print(f"     🧭 지원지역={item.get('supt_regin')!r} 모집중={item.get('rcrt_prgs_yn')!r} 접수마감={item.get('pbanc_rcpt_end_dt')!r}")
                 add_notice_to_user_buckets(title, "K-Startup", "전국", "창업지원", detail_url or "https://www.k-startup.go.kr", user_buckets, sent_history, pending_logs)
                 new_count += 1
 
@@ -1106,6 +1167,9 @@ def collect_bizinfo_api(user_buckets, sent_history, pending_logs):
                 if not is_valid_real_notice(title):
                     continue
                 if title in sent_history or (detail_url and detail_url in sent_history):
+                    continue
+
+                if is_expired_notice(title):
                     continue
 
                 print(f"  📢 [기업마당 API 신규 공고 발견!] {title}")
@@ -1391,16 +1455,22 @@ def main():
             # 올라오면 나머지가 영영 누락됐다. 이제 위에서부터 최대 MAX_ITEMS_PER_BOARD건을
             # 확인하고, 이미 발송 이력에 있는 건 건너뛴다.
             new_found = 0
+            expired_skipped = 0
             for latest_title, notice_link in items:
                 if not is_valid_real_notice(latest_title):
                     continue
                 if latest_title in sent_history or (not is_generic_url(notice_link) and notice_link in sent_history):
+                    continue
+                if is_expired_notice(latest_title, notice_link):
+                    expired_skipped += 1
                     continue
                 print(f"  📢 [신규 공고 발견!] {latest_title}")
                 print(f"  🔗 개별 상세 링크: {notice_link}")
                 add_notice_to_user_buckets(latest_title, org_name, region, category, notice_link, user_buckets, sent_history, pending_logs)
                 new_found += 1
 
+            if expired_skipped:
+                print(f"  ⏭️ 마감/종료된 공고 {expired_skipped}건은 제외했습니다.")
             if new_found == 0:
                 print("  ✅ 변동 없음 (이미 발송 완료된 공고)")
 
