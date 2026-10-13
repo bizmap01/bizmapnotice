@@ -332,6 +332,11 @@ def _is_region_false_positive(reg, title):
 # 어디에도 부분 문자열로 걸리지 않는다. 그래서 notice_region="전국"인 공고(특히
 # K-Startup/기업마당 API 수집 건)의 제외 루프가 이런 특정 권역 공고를 걸러내지
 # 못하고 전체 사용자에게 새어나갔다(예: "충청권역" 공고가 부산/경기 사용자에게도 발송).
+# 사용자 지역값을 정규화한 뒤(예: "충청북도" -> "충청북") 줄임말로 환산하는 표.
+REGION_FULLNAME_ALIAS = {
+    "충청북": "충북", "충청남": "충남", "전라북": "전북", "전라남": "전남", "경상북": "경북", "경상남": "경남",
+}
+
 REGION_CLUSTER_MAP = {
     "수도권": ["서울", "경기", "인천"],
     "동남권": ["부산", "울산", "경남"],
@@ -353,6 +358,7 @@ def is_region_matching(user_region, notice_region, title):
              .replace("도", "")
              .replace("시", "")
              .strip())
+    u_reg = REGION_FULLNAME_ALIAS.get(u_reg, u_reg)
 
     if u_reg in ["전국", ""]:
         return True
@@ -436,7 +442,12 @@ def is_category_matching(user_category, title, notice_category="", notice_region
 # add_notice_to_user_buckets(크롤링 중 매칭)와 main()의 발송 단계에서 똑같이 써야 하는데
 # 예전엔 두 군데에 거의 동일한 리스트가 복붙돼 있어서 한쪽만 고치면 어긋날 위험이 있었다.
 # parse_user_keywords()로 합쳐서 한 곳에서만 관리한다.
-REGION_KEYWORD_HINTS = ["서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"]
+# 🔧 [필터링 수정] 가입 화면(index.html)의 지역 옵션 값은 "충청북도/충청남도/전라남도/경상북도/경상남도"처럼
+#    정식 명칭으로 저장된다. 예전 힌트 목록엔 줄임말("충북" 등)만 있어서 이 5개 도의 사용자는 지역으로
+#    인식되지 못하고 "전국"(=지역 필터 없음)으로 처리됐다 → 다른 지역 공고까지 전부 발송될 수 있었다.
+#    정식 명칭의 앞 두 글자 + 방향("충청북" 등)을 힌트에 추가하고, 아래 REGION_FULLNAME_ALIAS로 줄임말로 환산한다.
+REGION_KEYWORD_HINTS = ["서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
+                        "충청북", "충청남", "전라북", "전라남", "경상북", "경상남"]
 CATEGORY_KEYWORD_HINTS = ["소상공인", "자영업", "창업", "제조", "IT", "스타트업"]
 
 def parse_user_keywords(raw_keywords):
@@ -1072,6 +1083,39 @@ def flush_pending_logs(pending_logs, chunk_size=200):
     finally:
         pending_logs.clear()
 
+# 🆕 K-Startup 응답의 supt_regin(지원지역)은 시/도 단위 이름이 정확히 온다(대전/충북/경기/울산/전북/
+#    전남광주/충남/서울/경북 등 실제 로그로 확인). 단, "전국"은 지역 미지정의 기본값처럼 쓰여서
+#    실제로는 지역 한정인 공고(예: 강동구/서초 창업센터)도 "전국"으로 오는 경우가 많다.
+#    그래서 "전국"이 아닌 값만 믿고 지역 한정 공고로 처리하고, "전국"이면 기존 제목 기반
+#    제외 로직(is_region_matching의 전국 분기)을 그대로 쓴다.
+_NON_CAPITAL_PROVINCES = ["부산", "대구", "광주", "대전", "울산", "세종", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"]
+
+def kstartup_notice_region(raw_region):
+    r = str(raw_region or "").strip()
+    if not r or r == "전국":
+        return "전국"
+    expanded = r
+    if "비수도권" in r:
+        expanded += "".join(_NON_CAPITAL_PROVINCES)
+    else:
+        for cluster, provinces in REGION_CLUSTER_MAP.items():
+            if cluster in r:
+                expanded += "".join(provinces)
+    return expanded
+
+def kstartup_is_closed(item, today=None):
+    """접수마감일(pbanc_rcpt_end_dt, YYYYMMDD)이 오늘 이전이면 마감.
+    마감일이 없거나 해석 불가하면 모집중 여부(rcrt_prgs_yn)가 N일 때만 마감으로 본다.
+    (모집중=N이어도 마감일이 미래면 '접수 예정'일 수 있어 마감으로 보지 않는다.)"""
+    today = today or datetime.datetime.now(KST).date()
+    end_raw = str(item.get("pbanc_rcpt_end_dt") or "").strip()
+    if re.fullmatch(r"\d{8}", end_raw):
+        try:
+            return datetime.datetime.strptime(end_raw, "%Y%m%d").date() < today
+        except ValueError:
+            pass
+    return str(item.get("rcrt_prgs_yn") or "").strip().upper() == "N"
+
 def collect_kstartup_api(user_buckets, sent_history, pending_logs):
     print("\n🌐 [공식 API] K-Startup 사업공고 수집 중 (최대 100건)...")
     url = f"https://apis.data.go.kr/B552735/kisedKstartupService01/getAnnouncementInformation01?serviceKey={DATA_GO_KEY}&page=1&perPage=100&returnType=json"
@@ -1088,10 +1132,8 @@ def collect_kstartup_api(user_buckets, sent_history, pending_logs):
             if isinstance(items, dict):
                 items = [items]
 
-            if items:
-                print(f"  🧭 [K-Startup 응답 키 점검] {sorted(items[0].keys()) if isinstance(items[0], dict) else type(items[0])}")
-
             new_count = 0
+            closed_skipped = 0
             for item in items:
                 title = str(item.get('biz_pbanc_nm') or item.get('intg_pbanc_biz_nm') or item.get('pbancNm') or '').strip()
                 title = clean_duplicate_text(title)
@@ -1102,16 +1144,18 @@ def collect_kstartup_api(user_buckets, sent_history, pending_logs):
                 if title in sent_history or (detail_url and detail_url in sent_history):
                     continue
 
-                if is_expired_notice(title):
+                if is_expired_notice(title) or kstartup_is_closed(item):
+                    closed_skipped += 1
                     continue
 
-                # 🔎 [점검용 로그] K-Startup 응답의 지원지역/모집여부/마감일 값이 실제로 어떻게 오는지 확인한다.
-                #   (아직 필터에는 쓰지 않는다. 값이 믿을 만하면 지역 필터에 반영할 예정)
+                notice_region = kstartup_notice_region(item.get('supt_regin'))
                 print(f"  📢 [K-Startup 신규 공고 발견!] {title}")
-                print(f"     🧭 지원지역={item.get('supt_regin')!r} 모집중={item.get('rcrt_prgs_yn')!r} 접수마감={item.get('pbanc_rcpt_end_dt')!r}")
-                add_notice_to_user_buckets(title, "K-Startup", "전국", "창업지원", detail_url or "https://www.k-startup.go.kr", user_buckets, sent_history, pending_logs)
+                print(f"     🧭 지원지역={item.get('supt_regin')!r} → 지역판정={notice_region!r} | 접수마감={item.get('pbanc_rcpt_end_dt')!r}")
+                add_notice_to_user_buckets(title, "K-Startup", notice_region, "창업지원", detail_url or "https://www.k-startup.go.kr", user_buckets, sent_history, pending_logs)
                 new_count += 1
 
+            if closed_skipped:
+                print(f"  ⏭️ [K-Startup] 마감/종료된 공고 {closed_skipped}건은 제외했습니다.")
             if new_count == 0:
                 print("  ✅ [K-Startup] 최신 공고 변동 없음 (이미 발송 완료)")
             api_success = True
