@@ -394,6 +394,15 @@ def is_region_matching(user_region, notice_region, title):
 
     return False
 
+# 🆕 "지역 한정 공고 + 지원사업/경영/자금" 같은 일반 키워드만으로 통과시키는 완화 규칙(fallback)은
+#    창업·소상공인과 무관한 제조/수출/해외 B2B 공고까지 끌어들인다(예: "[경기] 뿌리기업 경쟁력 강화 지원사업",
+#    "해외플랫폼 입점 지원사업"). 이 규칙에만 아래 단어가 제목에 있으면 통과시키지 않는다.
+#    (창업/소상공인 전용 키워드가 제목에 직접 있는 경우는 이 제외 목록과 무관하게 통과)
+FALLBACK_EXCLUDE_WORDS = ["수출", "해외", "뿌리", "바이어", "KOTRA", "디자인개발", "제품디자인", "수출바우처", "양산"]
+
+def _fallback_blocked(title):
+    return any(w in title for w in FALLBACK_EXCLUDE_WORDS)
+
 def is_category_matching(user_category, title, notice_category="", notice_region=""):
     clean_cat = (user_category or "소상공인").strip()
     
@@ -412,7 +421,7 @@ def is_category_matching(user_category, title, notice_category="", notice_region
         ]
         if any(k in title or k in notice_category for k in startup_keywords):
             return True
-        if notice_region not in ["전국", ""] and any(k in title for k in ["사업화", "마케팅", "지원사업"]):
+        if notice_region not in ["전국", ""] and not _fallback_blocked(title) and any(k in title for k in ["사업화", "마케팅", "지원사업"]):
             return True
         return False
 
@@ -427,7 +436,7 @@ def is_category_matching(user_category, title, notice_category="", notice_region
         ]
         if any(k in title or k in notice_category for k in sosang_keywords):
             return True
-        if notice_region not in ["전국", ""] and any(k in title for k in ["경영", "자금", "지원사업"]):
+        if notice_region not in ["전국", ""] and not _fallback_blocked(title) and any(k in title for k in ["경영", "자금", "지원사업"]):
             return True
         return False
 
@@ -589,7 +598,9 @@ def fetch_cffi_with_retry(target_url, max_retries=2):
                 time.sleep(1.5)
     return None
 
-def fetch_with_playwright(target_url, org_name=""):
+def fetch_with_playwright(target_url, org_name="", patient=False):
+    # patient=True: 첫 시도에서 공고를 못 찾았을 때 한 번 더 쓰는 '느긋한' 모드.
+    # 화면이 늦게 그려지는 사이트에서 목록이 뜨기 전에 읽어버려 일시적으로 실패하는 것을 줄인다.
     # 🔧 [버그수정] 예전엔 browser.close()가 함수 끝에 딱 한 줄로만 있어서, 그 이전 어디서든
     # 예외가 나면(page.content() 등에서) close()가 실행되지 않고 바로 바깥 except로 빠져나갔다.
     # sync_playwright()의 with 블록이 드라이버 프로세스는 정리해도 개별 브라우저 프로세스가
@@ -620,7 +631,7 @@ def fetch_with_playwright(target_url, org_name=""):
                         pass
 
                 try:
-                    page.wait_for_load_state("networkidle", timeout=3000)
+                    page.wait_for_load_state("networkidle", timeout=12000 if patient else 3000)
                 except Exception:
                     pass
 
@@ -629,12 +640,32 @@ def fetch_with_playwright(target_url, org_name=""):
                     ".tbl_list", ".sub_biz_list", ".bo_tit", ".prj_list_box",
                     ".company_support_list", ".business_list", "li", "div"
                 ]
+                if patient:
+                    # 범용 선택자("li", "div")는 목록이 그려지기 전에도 바로 잡혀서 기다림이 무의미해지므로 뺀다.
+                    wait_targets = wait_targets[:-2]
                 for target in wait_targets:
                     try:
-                        page.wait_for_selector(target, timeout=1500)
+                        page.wait_for_selector(target, timeout=3000 if patient else 1500)
                         break
                     except Exception:
                         pass
+
+                if patient:
+                    # 페이지 내용 길이가 연속 2번(약 4초) 변하지 않을 때까지 기다린다(최대 약 20초).
+                    # 뼈대(skeleton)만 먼저 뜨고 목록이 나중에 채워지는 사이트를 위한 것.
+                    prev_len, stable = -1, 0
+                    for _ in range(10):
+                        time.sleep(2)
+                        try:
+                            cur_len = len(page.content())
+                        except Exception:
+                            continue
+                        if cur_len == prev_len:
+                            stable += 1
+                        else:
+                            stable, prev_len = 0, cur_len
+                        if stable >= 2:
+                            break
 
                 content = ""
                 for _ in range(4):
@@ -1186,6 +1217,24 @@ def collect_kstartup_api(user_buckets, sent_history, pending_logs):
         except Exception as e:
             print(f"  ❌ K-Startup 웹 백업 실패: {e}")
 
+# 🆕 기업마당 API는 공고별 지역 필드를 주지 않아서 지금까지 notice_region을 무조건 "전국"으로 넘겼다.
+#    그러면 제목에 "[부산]"처럼 지역이 명시된 공고도 is_category_matching의 "지역 한정 공고면 '지원사업' 등
+#    일반 키워드를 인정" 규칙을 못 받아서, 창업/소상공인 사용자가 자기 지역 공고를 놓쳤다
+#    (예: "[부산] ... 소상공인 동반성장 지원사업", "[부산] 동계 계절학기 ... 현장실습 지원사업").
+#    제목 맨 앞 [지역] 태그가 시/도 이름일 때만 그 지역으로 취급하고, 그 외([비수도권] 등)는 "전국"으로 둔다.
+_BIZINFO_TAG_RE = re.compile(r"^\s*\[([^\]]{1,12})\]")
+_BIZINFO_PROVINCES = ["서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종", "경기", "강원",
+                      "충북", "충남", "전북", "전남", "경북", "경남", "제주"]
+
+def bizinfo_notice_region(title):
+    m = _BIZINFO_TAG_RE.match(title or "")
+    if not m:
+        return "전국"
+    tag = (m.group(1).replace("특별자치시", "").replace("특별자치도", "").replace("특별시", "")
+           .replace("광역시", "").replace("도", "").replace("시", "").strip())
+    tag = REGION_FULLNAME_ALIAS.get(tag, tag)
+    return tag if tag in _BIZINFO_PROVINCES else "전국"
+
 def collect_bizinfo_api(user_buckets, sent_history, pending_logs):
     print("\n🌐 [기업마당] 지원사업 공고 전수 수집 시작 (API + 웹 3중 백업)...")
     url = f"https://apis.data.go.kr/1421000/bizinfo/pblancBsnsService?serviceKey={DATA_GO_KEY}&pageNo=1&numOfRows=100&dataType=json"
@@ -1217,7 +1266,7 @@ def collect_bizinfo_api(user_buckets, sent_history, pending_logs):
                     continue
 
                 print(f"  📢 [기업마당 API 신규 공고 발견!] {title}")
-                add_notice_to_user_buckets(title, "기업마당", "전국", "중소기업지원", detail_url or "https://www.bizinfo.go.kr", user_buckets, sent_history, pending_logs)
+                add_notice_to_user_buckets(title, "기업마당", bizinfo_notice_region(title), "중소기업지원", detail_url or "https://www.bizinfo.go.kr", user_buckets, sent_history, pending_logs)
                 new_count += 1
 
             if new_count == 0:
@@ -1293,7 +1342,7 @@ def collect_bizinfo_api(user_buckets, sent_history, pending_logs):
 
                     print(f"  📢 [기업마당 신규 발견!] {raw_text}")
                     print(f"     🔗 링크: {link}")
-                    add_notice_to_user_buckets(raw_text, "기업마당", "전국", "중소기업지원", link, user_buckets, sent_history, pending_logs)
+                    add_notice_to_user_buckets(raw_text, "기업마당", bizinfo_notice_region(raw_text), "중소기업지원", link, user_buckets, sent_history, pending_logs)
                     new_count += 1
                     page_has_new = True
 
@@ -1484,6 +1533,13 @@ def main():
                     if pw_html:
                         pw_soup = BeautifulSoup(pw_html, "html.parser")
                         items = extract_titles_and_links_smart(pw_soup, org_name, target_url)
+
+            if not items:
+                print("  🔁 공고를 못 찾아 대기 시간을 늘려 한 번 더 시도합니다...")
+                pw_html = fetch_with_playwright(target_url, org_name, patient=True)
+                if pw_html:
+                    pw_soup = BeautifulSoup(pw_html, "html.parser")
+                    items = extract_titles_and_links_smart(pw_soup, org_name, target_url)
 
             if not items:
                 # 🔧 [버그수정] 예전엔 이 케이스(파싱 자체가 아무 제목도 못 찾음)에서
