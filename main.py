@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import copy
 import re
 import hmac
 import hashlib
@@ -259,6 +260,9 @@ REGION_NAME_FALSE_POSITIVE_WORDS = {
     "대구": ["확대구축", "확대구매", "확대구성", "확대구현", "대구분"],
     "정선": ["정선된", "정선하여", "엄정선정", "정선기준"],
     "장수": ["장수기업", "우수장수기업", "백년장수", "장수생", "장수사진"],
+    # 2026-10-15 실제 로그: "수산부산물"(경남TP), "동부산점"(경북 롯데아울렛), "부산국제수산EXPO"(전북 부안군)가
+    # 제목에 "부산"이 들어있다는 이유로 부산 사용자의 지역 조건을 통과했다.
+    "부산": ["부산물", "동부산", "부산국제수산"],
 }
 
 # 🔧 [필터링 수정] ALL_KOREA_REGIONS는 시/도와 그 아래 시/군/구 이름이 계층 구분 없이
@@ -398,7 +402,8 @@ def is_region_matching(user_region, notice_region, title):
 #    창업·소상공인과 무관한 제조/수출/해외 B2B 공고까지 끌어들인다(예: "[경기] 뿌리기업 경쟁력 강화 지원사업",
 #    "해외플랫폼 입점 지원사업"). 이 규칙에만 아래 단어가 제목에 있으면 통과시키지 않는다.
 #    (창업/소상공인 전용 키워드가 제목에 직접 있는 경우는 이 제외 목록과 무관하게 통과)
-FALLBACK_EXCLUDE_WORDS = ["수출", "해외", "뿌리", "바이어", "KOTRA", "디자인개발", "제품디자인", "수출바우처", "양산"]
+FALLBACK_EXCLUDE_WORDS = ["수출", "해외", "뿌리", "바이어", "KOTRA", "디자인개발", "제품디자인", "수출바우처", "양산",
+                          "미세먼지", "악취", "방지시설", "사물인터넷", "IoT", "맑은공기", "휴게시설", "근로자", "장학금"]
 
 def _fallback_blocked(title):
     return any(w in title for w in FALLBACK_EXCLUDE_WORDS)
@@ -420,6 +425,9 @@ def is_category_matching(user_category, title, notice_category="", notice_region
             "피칭", "데모데이", "TIPS", "팁스", "캠퍼스타운", "투자유치", "시제품"
         ]
         if any(k in title or k in notice_category for k in startup_keywords):
+            return True
+        # 창업기업도 결국 소상공인이다 → 지역 한정 공고에 소상공인 계열 단어가 직접 있으면 창업 사용자에게도 통과
+        if notice_region not in ["전국", ""] and any(k in title for k in ["소상공인", "자영업", "점포", "전통시장", "골목상권"]):
             return True
         if notice_region not in ["전국", ""] and not _fallback_blocked(title) and any(k in title for k in ["사업화", "마케팅", "지원사업"]):
             return True
@@ -597,6 +605,19 @@ def fetch_cffi_with_retry(target_url, max_retries=2):
             if attempt < max_retries:
                 time.sleep(1.5)
     return None
+
+def diagnose_html(html):
+    """파싱 실패 시 '받은 페이지가 어떤 모양이었는지'를 로그에 남기기 위한 한 줄 요약.
+    (접속 차단 페이지인지, 빈 페이지인지, 구조가 다른 페이지인지 로그만 보고 구분하기 위함)"""
+    if not html:
+        return "받은 HTML 없음(접속 실패/타임아웃)"
+    try:
+        sp = BeautifulSoup(html, "html.parser")
+        title = (sp.title.get_text(strip=True) if sp.title else "")[:60]
+        text = re.sub(r"\s+", " ", sp.get_text(" ", strip=True))[:120]
+        return f"HTML {len(html)}자 | title='{title}' | a={len(sp.find_all('a'))} tr={len(sp.find_all('tr'))} | 본문앞='{text}'"
+    except Exception as e:
+        return f"HTML {len(html)}자 | 요약 실패: {e}"
 
 def fetch_with_playwright(target_url, org_name="", patient=False):
     # patient=True: 첫 시도에서 공고를 못 찾았을 때 한 번 더 쓰는 '느긋한' 모드.
@@ -890,7 +911,19 @@ MAX_ITEMS_PER_BOARD = 20
 
 def extract_titles_and_links_smart(soup, org_name, target_url, limit=MAX_ITEMS_PER_BOARD):
     """게시판에서 (제목, 링크)를 위에서부터 최대 limit개까지 추출한다.
-    기관별 전용 규칙 → 일반 규칙 순으로 시도하고, 처음으로 결과가 나온 규칙의 결과만 쓴다."""
+    1차: 기존 방식(javascript:void 링크는 메뉴용 가짜 링크로 보고 제거).
+    2차: 1차에서 하나도 못 찾으면 javascript:void 링크를 살려서 다시 시도한다.
+    (경북TP·대전일자리경제진흥원은 공고 제목 링크 자체가 href="javascript:void(...)" 형태라서
+     1차에서 목록 전체가 지워져 9/29부터 계속 파싱 실패였다 — 2026-10-15 실제 페이지로 확인.)
+    1차에서 결과가 나온 게시판은 예전과 완전히 똑같이 동작한다."""
+    soup_backup = copy.copy(soup)
+    results = _extract_titles_and_links_core(soup, org_name, target_url, limit, keep_void=False)
+    if results:
+        return results
+    return _extract_titles_and_links_core(soup_backup, org_name, target_url, limit, keep_void=True)
+
+def _extract_titles_and_links_core(soup, org_name, target_url, limit=MAX_ITEMS_PER_BOARD, keep_void=False):
+    """기관별 전용 규칙 → 일반 규칙 순으로 시도하고, 처음으로 결과가 나온 규칙의 결과만 쓴다."""
     results = []
     seen_titles = set()
 
@@ -909,6 +942,8 @@ def extract_titles_and_links_smart(soup, org_name, target_url, limit=MAX_ITEMS_P
         ".quick_menu", ".quick", ".floating", "#quickMenu", ".sba_quick", ".floating_banner",
         "[href*='javascript:void']", "[href*='#cont']", "[href*='#skip']", "[href*='KakaoAlarm']", "[href*='login']"
     ]
+    if keep_void:
+        unwanted_selectors = [sel for sel in unwanted_selectors if "javascript:void" not in sel]
     for sel in unwanted_selectors:
         for tag in soup.select(sel):
             tag.decompose()
@@ -1548,6 +1583,7 @@ def main():
                 # 코드가 없었던 것이다. 사이트 개편으로 크롤러가 조용히 깨져도 개발자에게
                 # 아무 알림이 가지 않아 무한정 방치될 수 있었다.
                 print("  ℹ️ 최신 공고 제목을 찾지 못함 (파싱 실패 가능성 → 개발자 경고 발송)")
+                print(f"  🩺 [진단] {diagnose_html(locals().get('pw_html'))}")
                 send_dev_warning(org_name, category, target_url, dev_history)
                 continue
 
