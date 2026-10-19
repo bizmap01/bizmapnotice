@@ -353,6 +353,15 @@ REGION_CLUSTER_MAP = {
     "제주권": ["제주"],
 }
 
+# 🆕 notice_region이 "전국"으로 오는 K-Startup/기업마당 공고 중에는 제목에 시/도 이름 없이 특정 지역의
+#    고유 사업명·장소명만 쓰는 것이 있다(2026-10-16/17 실제: "[광운대캠퍼스타운] AI+X Connect Forum",
+#    "[소담스퀘어 당산] ..." 이 경기·부산 사용자에게도 발송됨 — 둘 다 서울 사업). 이름만으로 소속 시/도가
+#    확실한 것만 등록한다. 새 사례가 나오면 여기에 추가.
+TITLE_REGION_HINTS = {
+    "캠퍼스타운": "서울", "당산": "서울", "마곡": "서울", "광운대": "서울", "시립대": "서울",
+    "판교": "경기", "송도": "인천",
+}
+
 def is_region_matching(user_region, notice_region, title):
     u_reg = (user_region
              .replace("특별자치시", "")
@@ -376,6 +385,10 @@ def is_region_matching(user_region, notice_region, title):
         # 먼저 하지 않으면 아래 REGION_CLUSTER_MAP 루프가 "수도권"만 보고 뜻을 정반대로 해석해서
         # 서울/경기/인천 사용자에게는 내보내고(원래는 제외돼야 함), 정작 대상인 비수도권
         # 사용자(부산/대전 등)는 제외해버리는(원래는 통과돼야 함) 완전히 뒤집힌 결과를 냈다.
+        for hint, hint_province in TITLE_REGION_HINTS.items():
+            if hint in title and u_reg != hint_province:
+                return False
+
         if "비수도권" in title:
             if u_reg in REGION_CLUSTER_MAP["수도권"]:
                 return False
@@ -429,6 +442,9 @@ def is_category_matching(user_category, title, notice_category="", notice_region
         # 창업기업도 결국 소상공인이다 → 지역 한정 공고에 소상공인 계열 단어가 직접 있으면 창업 사용자에게도 통과
         if notice_region not in ["전국", ""] and any(k in title for k in ["소상공인", "자영업", "점포", "전통시장", "골목상권"]):
             return True
+        # 지역 한정 공고에서 소상공인 대상 사업을 가리키는 흔한 이름들(예: "착한가격업소", "너와마켓", "소싱인마켓")
+        if notice_region not in ["전국", ""] and not _fallback_blocked(title) and any(k in title for k in ["착한가격", "상권", "장터", "마켓"]):
+            return True
         if notice_region not in ["전국", ""] and not _fallback_blocked(title) and any(k in title for k in ["사업화", "마케팅", "지원사업"]):
             return True
         return False
@@ -444,7 +460,7 @@ def is_category_matching(user_category, title, notice_category="", notice_region
         ]
         if any(k in title or k in notice_category for k in sosang_keywords):
             return True
-        if notice_region not in ["전국", ""] and not _fallback_blocked(title) and any(k in title for k in ["경영", "자금", "지원사업"]):
+        if notice_region not in ["전국", ""] and not _fallback_blocked(title) and any(k in title for k in ["경영", "자금", "지원사업", "마켓", "장터", "판로", "상권"]):
             return True
         return False
 
@@ -606,16 +622,21 @@ def fetch_cffi_with_retry(target_url, max_retries=2):
                 time.sleep(1.5)
     return None
 
+# 마지막 Playwright 접속 오류/HTTP 상태(파싱 실패 진단 로그용). 전북TP처럼 4일 내내 빈 페이지(79자)를 받는
+# 곳이 접속 차단인지 타임아웃인지 로그만으로 알 수 있게 한다.
+_LAST_PW_ERROR = ""
+
 def diagnose_html(html):
     """파싱 실패 시 '받은 페이지가 어떤 모양이었는지'를 로그에 남기기 위한 한 줄 요약.
     (접속 차단 페이지인지, 빈 페이지인지, 구조가 다른 페이지인지 로그만 보고 구분하기 위함)"""
     if not html:
-        return "받은 HTML 없음(접속 실패/타임아웃)"
+        return f"받은 HTML 없음(접속 실패/타임아웃) | 접속오류='{_LAST_PW_ERROR}'"
     try:
         sp = BeautifulSoup(html, "html.parser")
         title = (sp.title.get_text(strip=True) if sp.title else "")[:60]
         text = re.sub(r"\s+", " ", sp.get_text(" ", strip=True))[:120]
-        return f"HTML {len(html)}자 | title='{title}' | a={len(sp.find_all('a'))} tr={len(sp.find_all('tr'))} | 본문앞='{text}'"
+        return (f"HTML {len(html)}자 | title='{title}' | a={len(sp.find_all('a'))} tr={len(sp.find_all('tr'))} | "
+                f"본문앞='{text}' | 접속오류='{_LAST_PW_ERROR}'")
     except Exception as e:
         return f"HTML {len(html)}자 | 요약 실패: {e}"
 
@@ -636,13 +657,18 @@ def fetch_with_playwright(target_url, org_name="", patient=False):
                 )
                 page = context.new_page()
 
+                global _LAST_PW_ERROR
+                _LAST_PW_ERROR = ""
                 try:
-                    page.goto(target_url, timeout=30000, wait_until="domcontentloaded")
-                except Exception:
+                    resp = page.goto(target_url, timeout=30000, wait_until="domcontentloaded")
+                    if resp is not None and resp.status >= 400:
+                        _LAST_PW_ERROR = f"HTTP {resp.status}"
+                except Exception as e:
+                    _LAST_PW_ERROR = str(e).replace("\n", " ")[:160]
                     try:
                         page.goto(target_url, timeout=30000, wait_until="commit")
-                    except Exception:
-                        pass
+                    except Exception as e2:
+                        _LAST_PW_ERROR = str(e2).replace("\n", " ")[:160]
 
                 if "경기도경제과학" in org_name:
                     try:
@@ -1575,6 +1601,15 @@ def main():
                 if pw_html:
                     pw_soup = BeautifulSoup(pw_html, "html.parser")
                     items = extract_titles_and_links_smart(pw_soup, org_name, target_url)
+
+            if not items and any(dyn_org in org_name for dyn_org in DYNAMIC_ORGS) and (not pw_html or len(pw_html) < 300):
+                # 동적 사이트는 처음부터 브라우저로만 읽었는데, 브라우저가 빈 페이지(전북TP: 4일 연속 79자)를 받으면
+                # 일반 HTTP 요청(curl_cffi)으로 한 번 더 시도한다(서버 렌더링 사이트면 이쪽이 통할 수 있음).
+                print("  🔁 브라우저가 빈 페이지를 받아 일반 요청으로 마지막 시도합니다...")
+                res = fetch_cffi_with_retry(target_url, max_retries=2)
+                if res and res.status_code == 200:
+                    pw_html = res.content.decode('utf-8', errors='ignore')
+                    items = extract_titles_and_links_smart(BeautifulSoup(pw_html, "html.parser"), org_name, target_url)
 
             if not items:
                 # 🔧 [버그수정] 예전엔 이 케이스(파싱 자체가 아무 제목도 못 찾음)에서
