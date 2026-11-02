@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # latest(26.04)에서는 playwright 1.48 install-deps 실패(libicu74 등 패키지 없음) → 24.04 고정
 
     steps:
     - name: 1. 코드 체크아웃
