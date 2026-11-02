@@ -362,6 +362,13 @@ TITLE_REGION_HINTS = {
     "판교": "경기", "송도": "인천",
 }
 
+# 🆕 입주기업 모집·창업보육센터·공유주방처럼 "특정 장소의 시설"에 들어가는 공고는 본질적으로 지역 한정이다.
+#    그런데 K-Startup은 지역값이 "전국"으로 비어 오는 경우가 많고 제목에도 지역명이 없을 수 있다
+#    (예: "홍익대 아트앤디자인테크 창업보육센터 입주기업 모집" → 서울 시설인데 경기·부산 유저에게 발송됨).
+#    지역이 "전국"이고 제목에 사용자 지역명도 없다면(아래 함수에서 이미 앞에서 걸러짐) 이런 공고는 제외한다.
+LOCAL_FACILITY_WORDS = ["입주기업", "입주 기업", "입주사", "입주자 모집", "신규 입주", "보육센터", "창업센터",
+                        "키친인큐베이터", "공유주방", "공유오피스", "코워킹"]
+
 def is_region_matching(user_region, notice_region, title):
     u_reg = (user_region
              .replace("특별자치시", "")
@@ -380,6 +387,12 @@ def is_region_matching(user_region, notice_region, title):
         return True
 
     if notice_region == "전국":
+        # 시설형 공고인데 제목에 지역(시/도·시/군/구) 단서가 하나도 없으면 어느 지역 시설인지 알 수 없으므로 제외.
+        # (제목에 지역이 있으면 아래 공통 지역 비교가 그대로 판단한다: "과천시 창업지원센터 입주기업"은 경기 유저 통과)
+        if any(w in title for w in LOCAL_FACILITY_WORDS):
+            if not any(reg in title and not _is_region_false_positive(reg, title) for reg in ALL_KOREA_REGIONS):
+                return False
+
         # 🔧 [필터링 수정] "비수도권"(서울·경기·인천을 제외한 전 지역 대상, 정부지원사업 제목에
         # 매우 흔히 쓰임)은 글자 그대로 "수도권"이라는 부분 문자열을 포함한다. 그래서 이 체크를
         # 먼저 하지 않으면 아래 REGION_CLUSTER_MAP 루프가 "수도권"만 보고 뜻을 정반대로 해석해서
@@ -434,7 +447,7 @@ def is_category_matching(user_category, title, notice_category="", notice_region
     if clean_cat in ["창업", "스타트업", "예비창업", "초기창업"]:
         startup_keywords = [
             "창업", "스타트업", "예비창업", "초기창업", "청년창업", "IR", "입주", "보육", 
-            "아이디어", "패키지", "챌린지", "밋업", "멘토링", "액셀러", "오픈이노베이션",
+            "아이디어", "챌린지", "밋업", "멘토링", "액셀러", "오픈이노베이션",
             "피칭", "데모데이", "TIPS", "팁스", "캠퍼스타운", "투자유치", "시제품"
         ]
         if any(k in title or k in notice_category for k in startup_keywords):
@@ -456,7 +469,9 @@ def is_category_matching(user_category, title, notice_category="", notice_region
             
         sosang_keywords = [
             "소상공인", "자영업", "골목", "상점", "전통시장", "점포", "착한가격", "온라인 판로",
-            "경영환경", "마케팅", "바우처", "이차보전", "특례보증", "시설개선", "임차료", "수수료"
+            "경영환경", "마케팅", "바우처", "이차보전", "특례보증", "시설개선", "임차료", "수수료",
+            # 🆕 소상공인·예비창업자도 입주 공고(창업센터/보육센터/공유주방 등)는 받는다
+            "입주기업", "입주 기업", "입주사", "신규 입주", "창업센터", "보육센터", "키친인큐베이터", "공유주방"
         ]
         if any(k in title or k in notice_category for k in sosang_keywords):
             return True
@@ -682,10 +697,18 @@ def fetch_with_playwright(target_url, org_name="", patient=False):
                 except Exception:
                     pass
 
+                if "서울경제진흥원" in org_name:
+                    # 타일(카드)형 목록이 ajax로 늦게 그려져서, 골격만 읽고 0건으로 실패하는 날이 있었다.
+                    try:
+                        page.wait_for_selector(".company_support_list li, .card_box, div.card_inner",
+                                               timeout=15000 if patient else 5000)
+                    except Exception:
+                        pass
+
                 wait_targets = [
                     "tbody tr", "table tr", ".kboard-list-title", ".pms-board-list",
                     ".tbl_list", ".sub_biz_list", ".bo_tit", ".prj_list_box",
-                    ".company_support_list", ".business_list", "li", "div"
+                    ".company_support_list", ".card_box", ".business_list", "li", "div"
                 ]
                 if patient:
                     # 범용 선택자("li", "div")는 목록이 그려지기 전에도 바로 잡혀서 기다림이 무의미해지므로 뺀다.
@@ -832,7 +855,10 @@ def is_valid_real_notice(title):
         "바로가기", "알림신청", "유관기관", "기업마당지원", "분야별지원", "지역별지원", "일정별지원",
         "로그인", "회원가입", "마이페이지", "사이트맵", "개인정보", "조직도", "연혁",
         "선정결과", "선정안내", "최종선정", "합격자발표", "심사결과", "결과발표", "결과공고", "선정기업",
-        "채용공고", "직원채용", "임시직", "기간제", "공무직", "인턴채용", "단기근로"
+        "채용공고", "직원채용", "임시직", "기간제", "공무직", "인턴채용", "단기근로",
+        # 🆕 기업이 아니라 '기관/업체'를 뽑는 공고(주관기관·수행기관 모집, 평가위원, 위탁운영사 등)
+        "주관기관모집", "주관기관선정", "주관기관공모", "수행기관모집", "수행기관공모", "운영기관모집", "운영기관선정",
+        "수행사업자모집", "위탁운영사", "평가위원", "운영사모집", "운영사선정"
     ]
     if any(bad in clean_t for bad in bad_keywords):
         return False
@@ -1133,7 +1159,10 @@ def add_notice_to_user_buckets(title, org_name, notice_region, category, target_
         #   지역 + 업종만 맞아도 통과 / 지역 + 키워드만 맞아도 통과
         #   업종 + 키워드가 맞아도 지역이 안 맞으면 통과 안 됨
         region_ok = is_region_matching(user_region, notice_region, title)
-        category_ok = is_category_matching(user_category, title, category, notice_region)
+        # 🆕 K-Startup은 모든 공고의 분류 라벨이 "창업지원"이라, 라벨까지 같이 보면 창업 유저는
+        #    제목과 무관하게 전부 통과한다. K-Startup은 라벨을 빼고 제목만으로 업종을 판단한다.
+        label_for_category = "" if org_name == "K-Startup" else category
+        category_ok = is_category_matching(user_category, title, label_for_category, notice_region)
         keyword_ok = is_keyword_matching(user_keywords, title, category)
 
         if region_ok and (category_ok or keyword_ok):
