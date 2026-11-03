@@ -456,8 +456,8 @@ def is_category_matching(user_category, title, notice_category="", notice_region
         title_lower = title.lower()
         if any(k in title_lower for k in ["startup", "open innovation"]) or any(k in title for k in ["스케일업", "청년사업가"]):
             return True
-        # 창업기업도 결국 소상공인이다 → 지역 한정 공고에 소상공인 계열 단어가 직접 있으면 창업 사용자에게도 통과
-        if notice_region not in ["전국", ""] and any(k in title for k in ["소상공인", "자영업", "점포", "전통시장", "골목상권"]):
+        # 창업기업도 결국 소상공인이다 → 소상공인 계열 단어가 제목에 직접 있으면(전국 공고 포함) 창업 사용자에게도 통과
+        if any(k in title for k in ["소상공인", "자영업", "점포", "전통시장", "골목상권"]):
             return True
         # 지역 한정 공고에서 소상공인 대상 사업을 가리키는 흔한 이름들(예: "착한가격업소", "너와마켓", "소싱인마켓")
         if notice_region not in ["전국", ""] and not _fallback_blocked(title) and any(k in title for k in ["착한가격", "상권", "장터", "마켓"]):
