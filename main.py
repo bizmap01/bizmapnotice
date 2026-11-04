@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import time
 import copy
@@ -1561,6 +1562,42 @@ def collect_gjbizinfo_api(user_buckets, sent_history, pending_logs):
 # 6. 메인 실행 및 통합 발송 총괄
 # ==========================================
 
+def deliver_notices(user_buckets, logs_by_email):
+    """유저별로 알림톡을 보내고, 발송에 성공한 유저의 이력만 DB에 저장한다.
+    반환: (성공한 유저 수, 발송에 실패한 유저 이메일 리스트)"""
+    total_sent_users = 0
+    failed_emails = []
+    for email, u_data in user_buckets.items():
+        user = u_data['user']
+        notices = u_data['notices']
+        user_name = user.get("name", "대표")
+
+        user_region, user_category, _, user_phone = parse_user_keywords(user.get("keywords"))
+
+        if not user_phone:
+            continue
+
+        if len(notices) > 0:
+            print(f"\n💬 [{user_name}님 ({user_phone})] 조건:({user_region}/{user_category}) | 정밀 맞춤 공고 {len(notices)}건 발송 중...")
+            if USE_KAKAO:
+                success, err_msg = send_integrated_kakao_alimtalk(user_phone, user_name, notices, user_region, user_category)
+                if success:
+                    print(f"  🎉 [통합 알림톡 발송 성공!]")
+                    total_sent_users += 1
+                    flush_pending_logs(logs_by_email.pop(email, []))
+                else:
+                    print(f"  ❌ [통합 알림톡 발송 실패]: {err_msg}")
+                    failed_emails.append(email)
+        else:
+            print(f"ℹ️ [{user_name}님] 오늘 신규 정밀 매칭 공고 없음 (불필요한 스팸 발송 완벽 차단)")
+
+    # 발송을 시도하지 않은 유저(전화번호 없음, 카카오 발송 꺼짐)의 이력은 예전처럼 저장하고,
+    # 발송에 실패한 유저의 이력은 저장하지 않아 다음 실행에서 다시 시도되게 한다.
+    for email in list(logs_by_email.keys()):
+        if email not in failed_emails:
+            flush_pending_logs(logs_by_email.pop(email))
+    return total_sent_users, failed_emails
+
 def main():
     if not os.path.exists(EXCEL_FILE):
         print(f"❌ '{EXCEL_FILE}' 파일이 존재하지 않습니다.")
@@ -1689,7 +1726,14 @@ def main():
     collect_jejutp_api(user_buckets, sent_history, pending_logs)
     collect_gjbizinfo_api(user_buckets, sent_history, pending_logs)
 
-    flush_pending_logs(pending_logs)
+    # 🔧 [버그수정] 예전엔 여기서 발송 이력을 먼저 DB에 저장하고 나서 알림톡을 보냈다.
+    # 솔라피 API 키가 만료돼 발송이 전부 실패한 날(2026-11-04)에도 이력은 '발송 완료'로 저장돼서,
+    # 키를 고치고 다시 돌려도 그날 공고가 영영 안 가는 문제가 있었다.
+    # 이제 유저별로 알림톡 발송이 '성공한 뒤에만' 그 유저의 이력을 저장한다.
+    logs_by_email = {}
+    for log_row in pending_logs:
+        logs_by_email.setdefault(log_row["email"], []).append(log_row)
+    pending_logs.clear()
     save_json_file(DEV_ALERT_FILE, dev_history)
 
     # ==========================================
@@ -1699,32 +1743,16 @@ def main():
     print(f"📨 [통합 알림 발송 단계] 유저별 맞춤 다이제스트 발송을 시작합니다...")
     print(f"==========================================")
 
-    total_sent_users = 0
-    for email, u_data in user_buckets.items():
-        user = u_data['user']
-        notices = u_data['notices']
-        user_name = user.get("name", "대표")
-
-        user_region, user_category, _, user_phone = parse_user_keywords(user.get("keywords"))
-
-        if not user_phone:
-            continue
-
-        if len(notices) > 0:
-            print(f"\n💬 [{user_name}님 ({user_phone})] 조건:({user_region}/{user_category}) | 정밀 맞춤 공고 {len(notices)}건 발송 중...")
-            if USE_KAKAO:
-                success, err_msg = send_integrated_kakao_alimtalk(user_phone, user_name, notices, user_region, user_category)
-                if success:
-                    print(f"  🎉 [통합 알림톡 발송 성공!]")
-                    total_sent_users += 1
-                else:
-                    print(f"  ❌ [통합 알림톡 발송 실패]: {err_msg}")
-        else:
-            print(f"ℹ️ [{user_name}님] 오늘 신규 정밀 매칭 공고 없음 (불필요한 스팸 발송 완벽 차단)")
+    total_sent_users, failed_emails = deliver_notices(user_buckets, logs_by_email)
 
     print(f"\n==========================================")
     print(f"✨ 모든 프로세스 완료! (총 {total_sent_users}명에게 맞춤 통합 리포트 발송 완료)")
     print(f"==========================================")
+
+    if failed_emails:
+        print(f"🚨 알림톡 발송 실패 {len(failed_emails)}명 → 이력을 저장하지 않았으므로 원인(API 키/잔액 등)을 고치고 다시 실행하면 재발송됩니다.")
+        # 워크플로우를 '실패'로 표시해서 GitHub 실패 알림 메일이 오게 한다(솔라피가 죽으면 개발자 경고 문자도 못 보내므로).
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
