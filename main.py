@@ -480,6 +480,9 @@ def is_category_matching(user_category, title, notice_category="", notice_region
         ]
         if any(k in title or k in notice_category for k in sosang_keywords):
             return True
+        # "입주자 모집"(예: 성동청년 창업이룸센터 입주자 모집)도 시설 입주 공고. 단, 임대주택/아파트 입주자 모집은 제외.
+        if ("입주자" in title or "창업이룸" in title) and not any(w in title for w in ["주택", "아파트", "임대"]):
+            return True
         if notice_region not in ["전국", ""] and not _fallback_blocked(title) and any(k in title for k in ["경영", "자금", "지원사업", "마켓", "장터", "판로", "상권"]):
             return True
         return False
