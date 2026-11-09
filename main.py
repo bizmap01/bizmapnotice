@@ -453,9 +453,9 @@ def is_category_matching(user_category, title, notice_category="", notice_region
         ]
         if any(k in title or k in notice_category for k in startup_keywords):
             return True
-        # 영문 표기("DB KU Startup Match", "LOTTE OPEN INNOVATION DAY")와 '스케일업/청년사업가'도 창업 공고로 본다.
+        # 영문 표기("DB KU Startup Match", "LOTTE OPEN INNOVATION DAY")와 '청년사업가'도 창업 공고로 본다.
         title_lower = title.lower()
-        if any(k in title_lower for k in ["startup", "open innovation"]) or any(k in title for k in ["스케일업", "청년사업가"]):
+        if any(k in title_lower for k in ["startup", "open innovation"]) or any(k in title for k in ["청년사업가"]):
             return True
         # 창업기업도 결국 소상공인이다 → 소상공인 계열 단어가 제목에 직접 있으면(전국 공고 포함) 창업 사용자에게도 통과
         if any(k in title for k in ["소상공인", "자영업", "점포", "전통시장", "골목상권"]):
