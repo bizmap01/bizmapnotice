@@ -352,6 +352,10 @@ REGION_CLUSTER_MAP = {
     "강원권역": ["강원"],
     "강원권": ["강원"],
     "제주권": ["제주"],
+    # 🆕 "권" 없이 쓰는 표기 (2026-11-11 실제: "2026 충청 스타트업 벤처포럼"이 경기·부산 유저에게 발송됨)
+    "충청": ["충북", "충남", "대전", "세종"],
+    "호남": ["전북", "전남", "광주"],
+    "영남": ["대구", "경북", "부산", "울산", "경남"],
 }
 
 # 🆕 notice_region이 "전국"으로 오는 K-Startup/기업마당 공고 중에는 제목에 시/도 이름 없이 특정 지역의
@@ -1582,6 +1586,9 @@ def deliver_notices(user_buckets, logs_by_email):
 
         if len(notices) > 0:
             print(f"\n💬 [{user_name}님 ({user_phone})] 조건:({user_region}/{user_category}) | 정밀 맞춤 공고 {len(notices)}건 발송 중...")
+            # 어떤 공고가 누구에게 갔는지 로그만 보고 바로 확인할 수 있게 목록을 남긴다(점검용).
+            for n_idx, n_item in enumerate(notices, 1):
+                print(f"     {n_idx}. [{n_item.get('org_name', '')}] {n_item.get('title', '')}")
             if USE_KAKAO:
                 success, err_msg = send_integrated_kakao_alimtalk(user_phone, user_name, notices, user_region, user_category)
                 if success:
