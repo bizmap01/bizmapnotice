@@ -1623,8 +1623,32 @@ def main():
     dev_history = load_json_file(DEV_ALERT_FILE)
 
     try:
-        res = supabase.table("users").select("*").eq("subscription_status", "active").execute()
-        active_users = res.data or []
+        # 🔧 [버그수정] 예전엔 active만 읽어서, 해지 예약(cancel_reserved)을 누르는 순간 알림이
+        # 바로 끊겼다. 마이페이지 안내문("결제 만료일까지는 알림톡이 정상 발송됩니다")대로,
+        # 해지 예약 유저도 만료일(next_billing_date) 전까지는 발송 대상에 포함한다.
+        # (2026-11-17 실제 발생: 해지 예약을 누른 유저가 잔여 기간 중인데 그날부터 알림 미수신)
+        res = (
+            supabase.table("users")
+            .select("*")
+            .in_("subscription_status", ["active", "cancel_reserved"])
+            .execute()
+        )
+        all_users = res.data or []
+        active_users = []
+        today_kst = datetime.datetime.now(KST).date()
+        for u in all_users:
+            if u.get("subscription_status") == "active":
+                active_users.append(u)
+                continue
+            # cancel_reserved: 만료일이 있고 아직 안 지났을 때만 포함
+            raw_end = str(u.get("next_billing_date") or "")[:10]
+            try:
+                end_date = datetime.date.fromisoformat(raw_end)
+            except ValueError:
+                continue
+            if end_date >= today_kst:
+                active_users.append(u)
+                print(f"⏳ [잔여 이용] {u.get('name', '-')}님: 해지 예약 상태지만 만료일({raw_end})까지 발송 유지")
     except Exception as e:
         print(f"❌ Supabase 유저 로드 실패: {e}")
         return
