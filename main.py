@@ -367,6 +367,10 @@ TITLE_REGION_HINTS = {
     "판교": "경기", "송도": "인천",
 }
 
+# 🆕 이름 자체가 비수도권 전용 사업인 단어. 기업마당이 지역 태그 없이 올려도 수도권(서울·경기·인천) 유저에겐 보내지 않는다.
+#    (2026-11-27 실제: 중기부 "창업도시 조성 프로젝트"(비수도권 지정 도시 대상)가 경기·서울 유저에게 발송됨)
+NON_CAPITAL_PROGRAM_WORDS = ["창업도시"]
+
 # 🆕 입주기업 모집·창업보육센터·공유주방처럼 "특정 장소의 시설"에 들어가는 공고는 본질적으로 지역 한정이다.
 #    그런데 K-Startup은 지역값이 "전국"으로 비어 오는 경우가 많고 제목에도 지역명이 없을 수 있다
 #    (예: "홍익대 아트앤디자인테크 창업보육센터 입주기업 모집" → 서울 시설인데 경기·부산 유저에게 발송됨).
@@ -392,6 +396,9 @@ def is_region_matching(user_region, notice_region, title):
         return True
 
     if notice_region == "전국":
+        if any(w in title for w in NON_CAPITAL_PROGRAM_WORDS) and u_reg in REGION_CLUSTER_MAP["수도권"]:
+            return False
+
         # 시설형 공고인데 제목에 지역(시/도·시/군/구) 단서가 하나도 없으면 어느 지역 시설인지 알 수 없으므로 제외.
         # (제목에 지역이 있으면 아래 공통 지역 비교가 그대로 판단한다: "과천시 창업지원센터 입주기업"은 경기 유저 통과)
         if any(w in title for w in LOCAL_FACILITY_WORDS):
